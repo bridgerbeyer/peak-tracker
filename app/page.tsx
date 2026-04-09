@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 
 const TRADES = ['Framing', 'Electrical', 'Plumbing', 'HVAC', 'Fire Sprinkler', 'Drywall', 'Concrete', 'Finishing', 'Other']
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3']
@@ -13,17 +14,20 @@ const TRADE_COLORS: Record<string, string> = {
 type Entry = { id: number; created_at: string; category: string; area: string; unit?: string; description: string; photos: string[]; ai_insight?: string; logged_by?: string }
 type Plan = { id: number; created_at: string; name: string; phase: string; extracted_items: ExtractedItem[]; logged_by?: string }
 type ExtractedItem = { trade: string; item: string; detail: string }
+type Unit = { id: number; name: string; phase: string; status: string }
+type Task = { id: number; unit_id: number; completed: boolean }
 
 export default function Home() {
-  const [tab, setTab] = useState<'log' | 'library' | 'plans' | 'phaseplan'>('log')
+  const [tab, setTab] = useState<'dashboard' | 'log' | 'library' | 'plans' | 'phaseplan'>('dashboard')
   const [entries, setEntries] = useState<Entry[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
+  const [units, setUnits] = useState<Unit[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [userName, setUserName] = useState('')
   const [nameSet, setNameSet] = useState(false)
 
-  // Log form
   const [trade, setTrade] = useState('')
   const [phase, setPhase] = useState('Phase 1')
   const [description, setDescription] = useState('')
@@ -31,11 +35,9 @@ export default function Home() {
   const [title, setTitle] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Library filters
   const [filterTrade, setFilterTrade] = useState('')
   const [filterPhase, setFilterPhase] = useState('')
 
-  // Plans
   const [planFile, setPlanFile] = useState<File | null>(null)
   const [planName, setPlanName] = useState('')
   const [planPhaseUpload, setPlanPhaseUpload] = useState('Phase 1')
@@ -45,7 +47,6 @@ export default function Home() {
   const [uploadProgress, setUploadProgress] = useState('')
   const planFileRef = useRef<HTMLInputElement>(null)
 
-  // Phase planner
   const [planPhase, setPlanPhase] = useState('Phase 2')
   const [planTrade, setPlanTrade] = useState('')
   const [planOutput, setPlanOutput] = useState('')
@@ -55,18 +56,19 @@ export default function Home() {
     const saved = localStorage.getItem('pcs_username')
     if (saved) { setUserName(saved); setNameSet(true) }
     fetchAll()
-    const ch1 = supabase.channel('entries-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'issues' }, fetchAll).subscribe()
-    const ch2 = supabase.channel('plans-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, fetchAll).subscribe()
-    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2) }
   }, [])
 
   async function fetchAll() {
-    const [e, p] = await Promise.all([
+    const [e, p, u, t] = await Promise.all([
       supabase.from('issues').select('*').order('created_at', { ascending: false }),
-      supabase.from('plans').select('*').order('created_at', { ascending: false })
+      supabase.from('plans').select('*').order('created_at', { ascending: false }),
+      supabase.from('units').select('id,name,phase,status').order('name'),
+      supabase.from('tasks').select('id,unit_id,completed'),
     ])
     if (e.data) setEntries(e.data as Entry[])
     if (p.data) setPlans(p.data as Plan[])
+    if (u.data) setUnits(u.data as Unit[])
+    if (t.data) setTasks(t.data as Task[])
     setLoading(false)
   }
 
@@ -106,21 +108,12 @@ export default function Home() {
     setTab('library')
   }
 
-  async function handlePlanFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0]
-    if (!f) return
-    setPlanFile(f)
-    setPlanName(f.name.replace('.pdf', '').replace(/_/g, ' '))
-  }
-
   async function uploadAndExtract() {
     if (!planFile) return
     setUploading(true)
     setUploadProgress('Reading PDF...')
-
     const tradesToExtract = extractMode === 'all' ? TRADES : selectedTrades
     if (!tradesToExtract.length) { setUploadProgress('Please select at least one trade.'); setUploading(false); return }
-
     try {
       const base64 = await new Promise<string>((res, rej) => {
         const r = new FileReader()
@@ -128,43 +121,33 @@ export default function Home() {
         r.onerror = () => rej(new Error('Read failed'))
         r.readAsDataURL(planFile)
       })
-
       setUploadProgress('Claude is reading your plans...')
-
       const resp = await fetch('/api/extract', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ base64, trades: tradesToExtract })
       })
       const data = await resp.json()
       const extracted: ExtractedItem[] = data.items || []
-
       setUploadProgress(`Saving ${extracted.length} items...`)
-
-      await supabase.from('plans').insert({
-        name: planName || planFile.name,
-        phase: planPhaseUpload,
-        extracted_items: extracted,
-        logged_by: userName || null
-      })
-
+      await supabase.from('plans').insert({ name: planName || planFile.name, phase: planPhaseUpload, extracted_items: extracted, logged_by: userName || null })
       setPlanFile(null); setPlanName(''); setSelectedTrades([])
       if (planFileRef.current) planFileRef.current.value = ''
       setUploadProgress('')
       setTab('plans')
-    } catch (err) {
-      setUploadProgress('Error processing plan. Try again.')
-    }
+    } catch { setUploadProgress('Error processing plan. Try again.') }
     setUploading(false)
   }
 
   async function deletePlan(id: number) {
     if (!confirm('Remove this plan?')) return
     await supabase.from('plans').delete().eq('id', id)
+    setPlans(prev => prev.filter(p => p.id !== id))
   }
 
   async function deleteEntry(id: number) {
     if (!confirm('Remove this entry?')) return
     await supabase.from('issues').delete().eq('id', id)
+    setEntries(prev => prev.filter(e => e.id !== id))
   }
 
   async function generatePhasePlan() {
@@ -188,10 +171,38 @@ export default function Home() {
   const allExtracted = plans.flatMap(p => (p.extracted_items || []).map(i => ({ ...i, planName: p.name, phase: p.phase })))
   const extractedByTrade = TRADES.reduce((acc, t) => { const items = allExtracted.filter(i => i.trade === t); if (items.length) acc[t] = items; return acc }, {} as Record<string, typeof allExtracted>)
 
-  const S = { input: { width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '9px 12px', fontSize: 14, background: '#fff', color: '#1A1814', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties }
+  const S = {
+    input: { width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '9px 12px', fontSize: 14, background: '#fff', color: '#1A1814', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
+    card: { background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1.25rem' } as React.CSSProperties,
+  }
+
+  // Dashboard stats
+  const totalUnits = units.length
+  const sold = units.filter(u => u.status === 'Sold').length
+  const underContract = units.filter(u => u.status === 'Under Contract').length
+  const available = units.filter(u => u.status === 'Available').length
+  const totalTasks = tasks.length
+  const completedTasks = tasks.filter(t => t.completed).length
+  const constructionPct = totalTasks ? Math.round(completedTasks / totalTasks * 100) : 0
+
+  const phaseStats = PHASES.map(p => {
+    const phaseUnits = units.filter(u => u.phase === p)
+    const phaseTasks = tasks.filter(t => phaseUnits.some(u => u.id === t.unit_id))
+    const phaseDone = phaseTasks.filter(t => t.completed).length
+    return {
+      phase: p,
+      total: phaseUnits.length,
+      sold: phaseUnits.filter(u => u.status === 'Sold').length,
+      underContract: phaseUnits.filter(u => u.status === 'Under Contract').length,
+      available: phaseUnits.filter(u => u.status === 'Available').length,
+      taskPct: phaseTasks.length ? Math.round(phaseDone / phaseTasks.length * 100) : 0,
+    }
+  }).filter(p => p.total > 0)
+
+  const recentLessons = entries.slice(0, 3)
 
   if (!nameSet) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#F5F3EE' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#F5F3EE', fontFamily: 'DM Sans, sans-serif' }}>
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '2.5rem', maxWidth: 400, width: '100%', textAlign: 'center' }}>
         <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.1em', color: '#7A756E', marginBottom: 8 }}>PEAK CONDO STORAGE</div>
         <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Construction Knowledge Base</div>
@@ -203,9 +214,9 @@ export default function Home() {
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EE' }}>
+    <div style={{ minHeight: '100vh', background: '#F5F3EE', fontFamily: 'DM Sans, sans-serif' }}>
       <header style={{ background: '#2B4D3F', padding: '0 1.5rem' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)' }}>PEAK CONDO STORAGE</span>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
@@ -219,22 +230,160 @@ export default function Home() {
       </header>
 
       <div style={{ background: '#fff', borderBottom: '1px solid #E2DDD6' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', padding: '0 1.5rem' }}>
-          <a href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#7A756E', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</a>
-          {[
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', padding: '0 1.5rem' }}>
+          <Link href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#7A756E', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</Link>
+          {([
+            { key: 'dashboard', label: 'Dashboard' },
             { key: 'log', label: 'Log lesson' },
             { key: 'library', label: `Library (${entries.length})` },
             { key: 'plans', label: `Plans (${plans.length})` },
             { key: 'phaseplan', label: 'Phase planner' },
-          ].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key as 'log' | 'library' | 'plans' | 'phaseplan')} style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: tab === t.key ? '#2B4D3F' : '#7A756E', borderBottom: tab === t.key ? '2px solid #2B4D3F' : '2px solid transparent' }}>
+          ] as const).map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: tab === t.key ? '#2B4D3F' : '#7A756E', borderBottom: tab === t.key ? '2px solid #2B4D3F' : '2px solid transparent' }}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '1.5rem' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem' }}>
+
+        {/* DASHBOARD */}
+        {tab === 'dashboard' && (
+          <div>
+            {/* Top metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, marginBottom: 20 }}>
+              {[
+                { label: 'Total units', value: totalUnits, sub: 'across all phases' },
+                { label: 'Sold', value: sold, sub: `${totalUnits ? Math.round(sold/totalUnits*100) : 0}% of total`, color: '#059669' },
+                { label: 'Under contract', value: underContract, sub: `${totalUnits ? Math.round(underContract/totalUnits*100) : 0}% of total`, color: '#D97706' },
+                { label: 'Available', value: available, sub: `${totalUnits ? Math.round(available/totalUnits*100) : 0}% of total`, color: '#2563EB' },
+              ].map(m => (
+                <div key={m.label} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem' }}>
+                  <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 4 }}>{m.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 600, color: m.color || '#1A1814', lineHeight: 1.1 }}>{m.value}</div>
+                  <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>{m.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sales progress bar */}
+            <div style={{ ...S.card, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Sales pipeline</div>
+              <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', height: 28, marginBottom: 10 }}>
+                {[
+                  { label: 'Sold', count: sold, color: '#059669' },
+                  { label: 'Under Contract', count: underContract, color: '#D97706' },
+                  { label: 'Available', count: available, color: '#E2DDD6' },
+                ].map(({ label, count, color }) => {
+                  const pct = totalUnits ? count / totalUnits * 100 : 0
+                  return pct > 0 ? (
+                    <div key={label} style={{ width: `${pct}%`, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: color === '#E2DDD6' ? '#7A756E' : '#fff', minWidth: pct > 8 ? 'auto' : 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {pct > 8 ? `${label} ${count}` : ''}
+                    </div>
+                  ) : null
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 16 }}>
+                {[{ label: 'Sold', color: '#059669' }, { label: 'Under Contract', color: '#D97706' }, { label: 'Available', color: '#E2DDD6', textColor: '#7A756E' }].map(l => (
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#7A756E' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
+                    {l.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              {/* Construction progress */}
+              <div style={S.card}>
+                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Construction progress</div>
+                <div style={{ fontSize: 36, fontWeight: 700, color: '#2B4D3F', marginBottom: 4 }}>{constructionPct}%</div>
+                <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 12 }}>{completedTasks} of {totalTasks} tasks complete across all units</div>
+                <div style={{ background: '#F5F3EE', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                  <div style={{ width: `${constructionPct}%`, height: '100%', borderRadius: 99, background: constructionPct === 100 ? '#059669' : '#2B4D3F', transition: 'width 0.4s' }} />
+                </div>
+              </div>
+
+              {/* Knowledge base */}
+              <div style={S.card}>
+                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Knowledge base</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    { label: 'Lessons logged', value: entries.length, action: () => setTab('log') },
+                    { label: 'Plans uploaded', value: plans.length, action: () => setTab('plans') },
+                    { label: 'Trades covered', value: Object.keys(tradeGroups).length, action: () => setTab('library') },
+                    { label: 'Spec items', value: allExtracted.length, action: () => setTab('plans') },
+                  ].map(m => (
+                    <div key={m.label} onClick={m.action} style={{ background: '#F5F3EE', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}>
+                      <div style={{ fontSize: 20, fontWeight: 600, color: '#2B4D3F' }}>{m.value}</div>
+                      <div style={{ fontSize: 11, color: '#7A756E', marginTop: 2 }}>{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Phase breakdown */}
+            <div style={{ ...S.card, marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Phase breakdown</div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${phaseStats.length}, 1fr)`, gap: 12 }}>
+                {phaseStats.map(p => (
+                  <div key={p.phase} style={{ border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px' }}>
+                    <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>{p.phase.toUpperCase()}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                      {[
+                        { label: 'Total units', value: p.total },
+                        { label: 'Sold', value: p.sold, color: '#059669' },
+                        { label: 'Under contract', value: p.underContract, color: '#D97706' },
+                        { label: 'Available', value: p.available, color: '#2563EB' },
+                      ].map(row => (
+                        <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#7A756E' }}>{row.label}</span>
+                          <span style={{ fontWeight: 500, color: row.color || '#1A1814' }}>{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 4 }}>Construction {p.taskPct}%</div>
+                    <div style={{ background: '#F5F3EE', borderRadius: 99, height: 5, overflow: 'hidden' }}>
+                      <div style={{ width: `${p.taskPct}%`, height: '100%', borderRadius: 99, background: '#2B4D3F' }} />
+                    </div>
+                  </div>
+                ))}
+                {phaseStats.length === 0 && (
+                  <div style={{ color: '#7A756E', fontSize: 13, gridColumn: '1/-1' }}>No unit data yet. <Link href="/units" style={{ color: '#2B4D3F' }}>Go to Unit Status →</Link></div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent lessons */}
+            {recentLessons.length > 0 && (
+              <div style={S.card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Recent lessons</div>
+                  <button onClick={() => setTab('library')} style={{ fontSize: 12, color: '#2B4D3F', background: 'none', border: 'none', cursor: 'pointer' }}>View all →</button>
+                </div>
+                {recentLessons.map(e => (
+                  <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid #F5F3EE', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: TRADE_COLORS[e.category] || '#6B7280', flexShrink: 0, marginTop: 5 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#1A1814' }}>{e.unit || e.category}</div>
+                      <div style={{ fontSize: 12, color: '#7A756E', marginTop: 1 }}>{e.description.slice(0, 100)}{e.description.length > 100 ? '...' : ''}</div>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#7A756E', flexShrink: 0, marginLeft: 'auto' }}>{e.area}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quick actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <Link href="/units" style={{ flex: 1, display: 'block', background: '#2B4D3F', color: '#fff', borderRadius: 10, padding: '14px', textAlign: 'center', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Go to Unit Status</Link>
+              <button onClick={() => setTab('log')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Log a lesson</button>
+              <button onClick={() => setTab('phaseplan')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Generate spec sheet</button>
+            </div>
+          </div>
+        )}
 
         {/* LOG LESSON */}
         {tab === 'log' && (
@@ -266,28 +415,24 @@ export default function Home() {
         {/* PLANS */}
         {tab === 'plans' && (
           <div>
-            {/* Upload card */}
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem', marginBottom: 20 }}>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Upload blueprint</div>
               <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 16 }}>Claude will read your PDF and extract trade-specific line items automatically.</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Plan name</label>
-                  <input value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Electrical Phase 1" style={S.input} /></div>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Phase</label>
-                  <select value={planPhaseUpload} onChange={e => setPlanPhaseUpload(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
+                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Plan name</label><input value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Electrical Phase 1" style={S.input} /></div>
+                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Phase</label><select value={planPhaseUpload} onChange={e => setPlanPhaseUpload(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>PDF file</label>
+              <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>PDF file</label>
                 <div onClick={() => planFileRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 8, padding: '1rem', textAlign: 'center', cursor: 'pointer', fontSize: 13, color: planFile ? '#2B4D3F' : '#7A756E', background: planFile ? '#E8F0EC' : 'transparent' }}>
                   {planFile ? planFile.name : 'Tap to select PDF blueprint'}
-                  <input ref={planFileRef} type="file" accept="application/pdf" onChange={handlePlanFile} style={{ display: 'none' }} />
+                  <input ref={planFileRef} type="file" accept="application/pdf" onChange={e => { const f = e.target.files?.[0]; if (f) { setPlanFile(f); setPlanName(f.name.replace('.pdf', '').replace(/_/g, ' ')) }}} style={{ display: 'none' }} />
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 8 }}>Extract trades</label>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   {(['all', 'selected'] as const).map(m => (
-                    <button key={m} onClick={() => setExtractMode(m)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', fontSize: 13, cursor: 'pointer', borderColor: extractMode === m ? '#2B4D3F' : '#E2DDD6', background: extractMode === m ? '#E8F0EC' : 'transparent', color: extractMode === m ? '#2B4D3F' : '#7A756E', fontWeight: extractMode === m ? 500 : 400 }}>
+                    <button key={m} onClick={() => setExtractMode(m)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', fontSize: 13, cursor: 'pointer', borderColor: extractMode === m ? '#2B4D3F' : '#E2DDD6', background: extractMode === m ? '#E8F0EC' : 'transparent', color: extractMode === m ? '#2B4D3F' : '#7A756E' }}>
                       {m === 'all' ? 'All trades' : 'Pick trades'}
                     </button>
                   ))}
@@ -296,7 +441,7 @@ export default function Home() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {TRADES.map(t => (
                       <button key={t} onClick={() => setSelectedTrades(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-                        style={{ padding: '5px 12px', borderRadius: 99, border: '1px solid', fontSize: 12, cursor: 'pointer', borderColor: selectedTrades.includes(t) ? TRADE_COLORS[t] : '#E2DDD6', background: selectedTrades.includes(t) ? TRADE_COLORS[t] + '20' : 'transparent', color: selectedTrades.includes(t) ? TRADE_COLORS[t] : '#7A756E', fontWeight: selectedTrades.includes(t) ? 500 : 400 }}>
+                        style={{ padding: '5px 12px', borderRadius: 99, border: '1px solid', fontSize: 12, cursor: 'pointer', borderColor: selectedTrades.includes(t) ? TRADE_COLORS[t] : '#E2DDD6', background: selectedTrades.includes(t) ? TRADE_COLORS[t] + '20' : 'transparent', color: selectedTrades.includes(t) ? TRADE_COLORS[t] : '#7A756E' }}>
                         {t}
                       </button>
                     ))}
@@ -310,54 +455,45 @@ export default function Home() {
                 </button>
               </div>
             </div>
-
-            {/* Extracted items by trade */}
-            {loading ? <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E' }}>Loading...</div>
-              : plans.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No plans uploaded yet.</div>
-              : (
-                <>
-                  {/* Plans list */}
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>UPLOADED PLANS</div>
-                    {plans.map(plan => (
-                      <div key={plan.id} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <div>
-                            <div style={{ fontWeight: 500, fontSize: 14 }}>{plan.name}</div>
-                            <div style={{ fontSize: 12, color: '#7A756E', marginTop: 2 }}>
-                              <span style={{ background: '#E8F0EC', color: '#2B4D3F', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{plan.phase}</span>
-                              <span style={{ marginLeft: 8 }}>{new Date(plan.created_at).toLocaleDateString()}</span>
-                              <span style={{ marginLeft: 8 }}>{plan.extracted_items?.length || 0} items extracted</span>
-                            </div>
-                          </div>
-                          <button onClick={() => deletePlan(plan.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #E2DDD6', borderRadius: 6, background: 'transparent', color: '#7A756E', cursor: 'pointer' }}>Remove</button>
+            {plans.length > 0 && (
+              <>
+                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>UPLOADED PLANS</div>
+                {plans.map(plan => (
+                  <div key={plan.id} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 14 }}>{plan.name}</div>
+                        <div style={{ fontSize: 12, color: '#7A756E', marginTop: 2 }}>
+                          <span style={{ background: '#E8F0EC', color: '#2B4D3F', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{plan.phase}</span>
+                          <span style={{ marginLeft: 8 }}>{new Date(plan.created_at).toLocaleDateString()}</span>
+                          <span style={{ marginLeft: 8 }}>{plan.extracted_items?.length || 0} items</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Items by trade */}
-                  <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>EXTRACTED LINE ITEMS BY TRADE</div>
-                  {Object.entries(extractedByTrade).map(([tradeName, items]) => (
-                    <div key={tradeName} style={{ marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: TRADE_COLORS[tradeName] || '#6B7280' }} />
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{tradeName}</div>
-                        <div style={{ fontSize: 12, color: '#7A756E' }}>({items.length})</div>
-                      </div>
-                      <div style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, overflow: 'hidden', marginLeft: 18 }}>
-                        {items.map((item, i) => (
-                          <div key={i} style={{ padding: '10px 14px', borderBottom: i < items.length - 1 ? '1px solid #F5F3EE' : 'none', display: 'flex', gap: 12 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: '#1A1814', minWidth: 160 }}>{item.item}</div>
-                            <div style={{ fontSize: 13, color: '#4B4640', flex: 1 }}>{item.detail}</div>
-                            <div style={{ fontSize: 11, color: '#7A756E', flexShrink: 0 }}>{item.planName}</div>
-                          </div>
-                        ))}
-                      </div>
+                      <button onClick={() => deletePlan(plan.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #E2DDD6', borderRadius: 6, background: 'transparent', color: '#7A756E', cursor: 'pointer' }}>Remove</button>
                     </div>
-                  ))}
-                </>
-              )}
+                  </div>
+                ))}
+                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10, marginTop: 20 }}>EXTRACTED LINE ITEMS BY TRADE</div>
+                {Object.entries(extractedByTrade).map(([tradeName, items]) => (
+                  <div key={tradeName} style={{ marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: TRADE_COLORS[tradeName] || '#6B7280' }} />
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>{tradeName}</div>
+                      <div style={{ fontSize: 12, color: '#7A756E' }}>({items.length})</div>
+                    </div>
+                    <div style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, overflow: 'hidden', marginLeft: 18 }}>
+                      {items.map((item, i) => (
+                        <div key={i} style={{ padding: '10px 14px', borderBottom: i < items.length - 1 ? '1px solid #F5F3EE' : 'none', display: 'flex', gap: 12 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, minWidth: 160 }}>{item.item}</div>
+                          <div style={{ fontSize: 13, color: '#4B4640', flex: 1 }}>{item.detail}</div>
+                          <div style={{ fontSize: 11, color: '#7A756E', flexShrink: 0 }}>{item.planName}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
@@ -369,8 +505,7 @@ export default function Home() {
               <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
               <span style={{ fontSize: 13, color: '#7A756E' }}>{filtered.length} lesson{filtered.length !== 1 ? 's' : ''}</span>
             </div>
-            {loading ? <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E' }}>Loading...</div>
-              : filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No lessons yet. Use Log lesson to get started.</div>
+            {filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No lessons yet.</div>
               : Object.entries(tradeGroups).map(([tradeName, items]) => (
                 <div key={tradeName} style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -406,7 +541,7 @@ export default function Home() {
           <div>
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem', marginBottom: 16 }}>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Phase planner</div>
-              <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 16 }}>Generate a spec sheet using your logged lessons AND uploaded plan data.</div>
+              <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 16 }}>Generate a spec sheet using your logged lessons and uploaded plan data.</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Generate spec for</label>
                   <select value={planPhase} onChange={e => setPlanPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
