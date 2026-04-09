@@ -117,7 +117,7 @@ export default function UnitsPage() {
     setSelectedUnit(unit)
     setDrawerTab('tasks')
     setEditPrice(unit.purchase_price ? unit.purchase_price.toString() : '')
-    setEditCommission(unit.realtor_commission ? unit.realtor_commission.toString() : '3')
+    setEditCommission(unit.realtor_commission !== undefined && unit.realtor_commission !== null ? unit.realtor_commission.toString() : '0')
     setEditBuyer(unit.buyer_name || '')
     setEditCloseDate(unit.close_date || '')
   }

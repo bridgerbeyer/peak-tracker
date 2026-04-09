@@ -62,7 +62,7 @@ export default function Home() {
     const [e, p, u, t] = await Promise.all([
       supabase.from('issues').select('*').order('created_at', { ascending: false }),
       supabase.from('plans').select('*').order('created_at', { ascending: false }),
-      supabase.from('units').select('id,name,phase,status').order('name'),
+      supabase.from('units').select('id,name,phase,status,purchase_price,realtor_commission,buyer_name,close_date').order('name'),
       supabase.from('tasks').select('id,unit_id,completed'),
     ])
     if (e.data) setEntries(e.data as Entry[])
