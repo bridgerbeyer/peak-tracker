@@ -1,29 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase-browser'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'reset' | 'set-password'>('login')
+  const [mode, setMode] = useState<'login' | 'reset'>('login')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') setMode('set-password')
-      if (event === 'SIGNED_IN' && mode !== 'set-password') window.location.href = '/'
-    })
-  }, [])
+  const supabase = createClient()
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) { setError('Please enter your email and password.'); return }
-    setLoading(true); setError('')
-    const supabase = createClient()
+    setLoading(true); setError(''); setMessage('')
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
     if (error) setError(error.message)
     else window.location.href = '/'
@@ -33,197 +24,93 @@ export default function LoginPage() {
   async function handleReset() {
     if (!email.trim()) { setError('Please enter your email address.'); return }
     setLoading(true); setError(''); setMessage('')
-    const supabase = createClient()
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/login`
+      redirectTo: `${window.location.origin}/auth/callback`
     })
     if (error) setError(error.message)
     else setMessage('Check your email for a password reset link.')
     setLoading(false)
   }
 
-  async function handleSetPassword() {
-    if (!newPassword.trim()) { setError('Please enter a password.'); return }
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return }
-    setLoading(true); setError('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) { setError(error.message); setLoading(false); return }
-    window.location.href = '/'
-  }
-
-  const inputStyle = { width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#1A1814', background: '#fff', outline: 'none', boxSizing: 'border-box' } as React.CSSProperties
-
   return (
     <div style={{ minHeight: '100vh', background: '#F5F3EE', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: 'DM Sans, sans-serif' }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
+        {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.14em', color: '#7A756E', marginBottom: 10 }}>PEAK CONDO STORAGE</div>
           <div style={{ fontSize: 24, fontWeight: 600, color: '#1A1814', marginBottom: 6 }}>
-            {mode === 'login' ? 'Sign in' : mode === 'reset' ? 'Reset password' : 'Set your password'}
+            {mode === 'login' ? 'Sign in' : 'Reset password'}
           </div>
           <div style={{ fontSize: 14, color: '#7A756E' }}>
-            {mode === 'login' ? 'Construction Knowledge Base' : mode === 'reset' ? 'We will send a reset link to your email' : 'Choose a password to complete your setup'}
+            {mode === 'login' ? 'Construction Knowledge Base' : 'Enter your email and we will send a reset link'}
           </div>
         </div>
 
+        {/* Card */}
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '2rem' }}>
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleReset())}
+              placeholder="you@example.com"
+              autoFocus
+              style={{ width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#1A1814', background: '#fff', outline: 'none' }}
+            />
+          </div>
+
           {mode === 'login' && (
-            <>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="you@example.com" autoFocus style={inputStyle} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" style={inputStyle} />
-              </div>
-              {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991B1B', marginBottom: 14 }}>{error}</div>}
-              <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '11px', background: loading ? '#A3B8B0' : '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <button onClick={() => { setMode('reset'); setError(''); setMessage('') }} style={{ fontSize: 13, color: '#7A756E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Forgot password?</button>
-              </div>
-            </>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+                placeholder="••••••••"
+                style={{ width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#1A1814', background: '#fff', outline: 'none' }}
+              />
+            </div>
           )}
 
-          {mode === 'reset' && (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleReset()} placeholder="you@example.com" autoFocus style={inputStyle} />
-              </div>
-              {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius:
-cat > ~/Downloads/peak-tracker/app/login/page.tsx << 'EOF'
-'use client'
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase-browser'
+          {error && (
+            <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991B1B', marginBottom: 14 }}>
+              {error}
+            </div>
+          )}
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'reset' | 'set-password'>('login')
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
+          {message && (
+            <div style={{ background: '#D1FAE5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#065F46', marginBottom: 14 }}>
+              {message}
+            </div>
+          )}
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') setMode('set-password')
-      if (event === 'SIGNED_IN' && mode !== 'set-password') window.location.href = '/'
-    })
-  }, [])
+          <button
+            onClick={mode === 'login' ? handleLogin : handleReset}
+            disabled={loading}
+            style={{ width: '100%', padding: '11px', background: loading ? '#A3B8B0' : '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: loading ? 'default' : 'pointer', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Send reset link'}
+          </button>
 
-  async function handleLogin() {
-    if (!email.trim() || !password.trim()) { setError('Please enter your email and password.'); return }
-    setLoading(true); setError('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    if (error) setError(error.message)
-    else window.location.href = '/'
-    setLoading(false)
-  }
-
-  async function handleReset() {
-    if (!email.trim()) { setError('Please enter your email address.'); return }
-    setLoading(true); setError(''); setMessage('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/login`
-    })
-    if (error) setError(error.message)
-    else setMessage('Check your email for a password reset link.')
-    setLoading(false)
-  }
-
-  async function handleSetPassword() {
-    if (!newPassword.trim()) { setError('Please enter a password.'); return }
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return }
-    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return }
-    setLoading(true); setError('')
-    const supabase = createClient()
-    const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) { setError(error.message); setLoading(false); return }
-    window.location.href = '/'
-  }
-
-  const inputStyle = { width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '10px 14px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#1A1814', background: '#fff', outline: 'none', boxSizing: 'border-box' } as React.CSSProperties
-
-  return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EE', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: 'DM Sans, sans-serif' }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.14em', color: '#7A756E', marginBottom: 10 }}>PEAK CONDO STORAGE</div>
-          <div style={{ fontSize: 24, fontWeight: 600, color: '#1A1814', marginBottom: 6 }}>
-            {mode === 'login' ? 'Sign in' : mode === 'reset' ? 'Reset password' : 'Set your password'}
-          </div>
-          <div style={{ fontSize: 14, color: '#7A756E' }}>
-            {mode === 'login' ? 'Construction Knowledge Base' : mode === 'reset' ? 'We will send a reset link to your email' : 'Choose a password to complete your setup'}
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            {mode === 'login' ? (
+              <button onClick={() => { setMode('reset'); setError(''); setMessage('') }} style={{ fontSize: 13, color: '#7A756E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                Forgot password?
+              </button>
+            ) : (
+              <button onClick={() => { setMode('login'); setError(''); setMessage('') }} style={{ fontSize: 13, color: '#7A756E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                Back to sign in
+              </button>
+            )}
           </div>
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '2rem' }}>
-          {mode === 'login' && (
-            <>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="you@example.com" autoFocus style={inputStyle} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="••••••••" style={inputStyle} />
-              </div>
-              {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991B1B', marginBottom: 14 }}>{error}</div>}
-              <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '11px', background: loading ? '#A3B8B0' : '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <button onClick={() => { setMode('reset'); setError(''); setMessage('') }} style={{ fontSize: 13, color: '#7A756E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Forgot password?</button>
-              </div>
-            </>
-          )}
-
-          {mode === 'reset' && (
-            <>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleReset()} placeholder="you@example.com" autoFocus style={inputStyle} />
-              </div>
-              {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991B1B', marginBottom: 14 }}>{error}</div>}
-              {message && <div style={{ background: '#D1FAE5', border: '1px solid #A7F3D0', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#065F46', marginBottom: 14 }}>{message}</div>}
-              <button onClick={handleReset} disabled={loading} style={{ width: '100%', padding: '11px', background: loading ? '#A3B8B0' : '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                {loading ? 'Sending...' : 'Send reset link'}
-              </button>
-              <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <button onClick={() => { setMode('login'); setError(''); setMessage('') }} style={{ fontSize: 13, color: '#7A756E', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Back to sign in</button>
-              </div>
-            </>
-          )}
-
-          {mode === 'set-password' && (
-            <>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>New password</label>
-                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="At least 8 characters" autoFocus style={inputStyle} />
-              </div>
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 13, color: '#7A756E', display: 'block', marginBottom: 6 }}>Confirm password</label>
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSetPassword()} placeholder="Re-enter password" style={inputStyle} />
-              </div>
-              {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#991B1B', marginBottom: 14 }}>{error}</div>}
-              <button onClick={handleSetPassword} disabled={loading} style={{ width: '100%', padding: '11px', background: loading ? '#A3B8B0' : '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                {loading ? 'Setting password...' : 'Set password and sign in'}
-              </button>
-            </>
-          )}
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#7A756E' }}>
+          Access is by invitation only. Contact Bridger to request access.
         </div>
-
-        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 12, color: '#7A756E' }}>Access is by invitation only.</div>
       </div>
     </div>
   )
