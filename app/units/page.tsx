@@ -161,6 +161,8 @@ export default function UnitsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link href="/" style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>PEAK CONDO STORAGE</Link>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
+            <Link href="/" style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textDecoration: 'none' }}>Knowledge Base</Link>
+            <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Unit Status</span>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

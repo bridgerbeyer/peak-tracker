@@ -210,7 +210,6 @@ export default function Home() {
             <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)' }}>PEAK CONDO STORAGE</span>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Construction Knowledge Base</span>
-            <a href="/units" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6, marginLeft: 4 }}>Unit Status →</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{userName[0]?.toUpperCase()}</div>
@@ -221,6 +220,7 @@ export default function Home() {
 
       <div style={{ background: '#fff', borderBottom: '1px solid #E2DDD6' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', padding: '0 1.5rem' }}>
+          <a href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#7A756E', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</a>
           {[
             { key: 'log', label: 'Log lesson' },
             { key: 'library', label: `Library (${entries.length})` },
