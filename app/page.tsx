@@ -86,12 +86,12 @@ export default function Home() {
 
   async function getAIInsight(entry: Partial<Entry> & { phase?: string }): Promise<string> {
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: `You are a construction spec assistant for Peak Condo Storage, a 172-unit condo storage facility in Eagle, Idaho. Based on this lesson from ${entry.phase}, write one concise spec instruction a subcontractor would follow.\n\nTrade: ${entry.category}\nLesson: ${entry.description}\n\nRespond with ONLY the instruction.` }] })
+        body: JSON.stringify({ category: entry.category, description: entry.description, phase: entry.phase })
       })
       const data = await resp.json()
-      return data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text || ''
+      return data.insight || ''
     } catch { return '' }
   }
 
@@ -131,36 +131,12 @@ export default function Home() {
 
       setUploadProgress('Claude is reading your plans...')
 
-      const prompt = `You are analyzing construction blueprints for Peak Condo Storage, a 172-unit condo storage facility in Eagle, Idaho.
-
-Extract specific construction details for these trades: ${tradesToExtract.join(', ')}.
-
-For each trade found in the plans, list specific line items — things like materials specified, dimensions, installation requirements, equipment specs, code requirements, etc.
-
-Respond ONLY with valid JSON in this exact format:
-[
-  { "trade": "Electrical", "item": "Panel schedule", "detail": "200A main panel, 42-circuit, Square D QO" },
-  { "trade": "Plumbing", "item": "Water heater", "detail": "50 gal electric, per unit" }
-]
-
-Extract as many specific items as you can find. If a trade has no details in these plans, skip it.`
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/extract', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514', max_tokens: 1000,
-          messages: [{ role: 'user', content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-            { type: 'text', text: prompt }
-          ]}]
-        })
+        body: JSON.stringify({ base64, trades: tradesToExtract })
       })
-
       const data = await resp.json()
-      const text = data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text || '[]'
-      const clean = text.replace(/```json|```/g, '').trim()
-      let extracted: ExtractedItem[] = []
-      try { extracted = JSON.parse(clean) } catch { extracted = [] }
+      const extracted: ExtractedItem[] = data.items || []
 
       setUploadProgress(`Saving ${extracted.length} items...`)
 
@@ -197,14 +173,12 @@ Extract as many specific items as you can find. If a trade has no details in the
     if (!relevant.length && !planItems.length) { setPlanOutput('No lessons or plan data found. Log some lessons or upload a plan first.'); return }
     setPlanLoading(true); setPlanOutput('')
     try {
-      const lessons = relevant.map(e => `[Lesson | ${e.category}]: ${e.description}`).join('\n')
-      const specs = planItems.map(i => `[Plan spec | ${i.trade}]: ${i.item} — ${i.detail}`).join('\n')
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('/api/phaseplan', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: `You are a construction PM for Peak Condo Storage, a 172-unit storage facility in Eagle, Idaho. Generate a spec sheet for ${planPhase}${planTrade ? ' — ' + planTrade : ' (all trades)'}. Use both lessons learned and plan specs below. Format as a numbered list of specific subcontractor instructions.\n\n${lessons}\n${specs}\n\nWrite the spec sheet:` }] })
+        body: JSON.stringify({ lessons: relevant, planItems, phase: planPhase, trade: planTrade })
       })
       const data = await resp.json()
-      setPlanOutput(data.content?.find((b: { type: string; text?: string }) => b.type === 'text')?.text || 'Could not generate.')
+      setPlanOutput(data.plan || 'Could not generate.')
     } catch { setPlanOutput('Could not reach AI.') }
     setPlanLoading(false)
   }
@@ -236,6 +210,7 @@ Extract as many specific items as you can find. If a trade has no details in the
             <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)' }}>PEAK CONDO STORAGE</span>
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Construction Knowledge Base</span>
+            <a href="/units" style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '4px 10px', borderRadius: 6, marginLeft: 4 }}>Unit Status →</a>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{userName[0]?.toUpperCase()}</div>
