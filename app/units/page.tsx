@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
-type Unit = { id: number; name: string; phase: string; status: string; size?: string; notes?: string }
+type Unit = { id: number; name: string; phase: string; status: string; size?: string; notes?: string; purchase_price?: number; realtor_commission?: number; buyer_name?: string; close_date?: string }
 type Task = { id: number; unit_id: number; title: string; description?: string; completed: boolean; due_date?: string; images?: TaskImage[] }
 type TaskImage = { id: number; task_id: number; image_data: string }
 type UnitPhoto = { id: number; unit_id: number; image_data: string; caption?: string; created_at: string }
@@ -22,6 +22,10 @@ const DEFAULT_TASKS = [
   'Drywall complete', 'Paint complete', 'Garage door installed',
   'Flooring complete', 'Final electrical', 'Final inspection'
 ]
+
+function fmt(n: number) {
+  return '$' + Math.round(n).toLocaleString()
+}
 
 export default function UnitsPage() {
   const [units, setUnits] = useState<Unit[]>([])
@@ -46,9 +50,15 @@ export default function UnitsPage() {
   const [newTaskDue, setNewTaskDue] = useState('')
   const [addingTask, setAddingTask] = useState(false)
 
+  // Sales fields
+  const [editPrice, setEditPrice] = useState('')
+  const [editCommission, setEditCommission] = useState('')
+  const [editBuyer, setEditBuyer] = useState('')
+  const [editCloseDate, setEditCloseDate] = useState('')
+  const [savingSales, setSavingSales] = useState(false)
+
   const [expandedImg, setExpandedImg] = useState<string | null>(null)
   const [newPhotoCaption, setNewPhotoCaption] = useState('')
-
   const imgRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const unitPhotoRef = useRef<HTMLInputElement>(null)
 
@@ -73,9 +83,8 @@ export default function UnitsPage() {
   }
 
   const unitTasks = useCallback((unitId: number) =>
-    tasks.filter(t => t.unit_id === unitId).map(t => ({
-      ...t, images: images.filter(i => i.task_id === t.id)
-    })), [tasks, images])
+    tasks.filter(t => t.unit_id === unitId).map(t => ({ ...t, images: images.filter(i => i.task_id === t.id) }))
+  , [tasks, images])
 
   const progress = useCallback((unitId: number) => {
     const ut = tasks.filter(t => t.unit_id === unitId)
@@ -87,6 +96,30 @@ export default function UnitsPage() {
     await supabase.from('units').update({ status }).eq('id', unitId)
     setUnits(prev => prev.map(u => u.id === unitId ? { ...u, status } : u))
     if (selectedUnit?.id === unitId) setSelectedUnit(prev => prev ? { ...prev, status } : prev)
+  }
+
+  async function saveSalesInfo() {
+    if (!selectedUnit) return
+    setSavingSales(true)
+    const updates: Partial<Unit> = {
+      purchase_price: editPrice ? parseFloat(editPrice.replace(/,/g, '')) : undefined,
+      realtor_commission: editCommission ? parseFloat(editCommission) : undefined,
+      buyer_name: editBuyer.trim() || undefined,
+      close_date: editCloseDate || undefined,
+    }
+    await supabase.from('units').update(updates).eq('id', selectedUnit.id)
+    setUnits(prev => prev.map(u => u.id === selectedUnit.id ? { ...u, ...updates } : u))
+    setSelectedUnit(prev => prev ? { ...prev, ...updates } : prev)
+    setSavingSales(false)
+  }
+
+  function openUnit(unit: Unit) {
+    setSelectedUnit(unit)
+    setDrawerTab('tasks')
+    setEditPrice(unit.purchase_price ? unit.purchase_price.toString() : '')
+    setEditCommission(unit.realtor_commission ? unit.realtor_commission.toString() : '3')
+    setEditBuyer(unit.buyer_name || '')
+    setEditCloseDate(unit.close_date || '')
   }
 
   async function toggleTask(taskId: number, completed: boolean) {
@@ -180,6 +213,7 @@ export default function UnitsPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {userName && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{userName}</span>}
             <button onClick={() => setShowAddUnit(true)} style={{ ...S.btnPrimary, background: 'rgba(255,255,255,0.15)', fontSize: 12, padding: '6px 14px' }}>+ Add unit</button>
+            <button onClick={async () => { const { createClient } = await import('@/lib/supabase-browser'); await createClient().auth.signOut(); window.location.href = '/login' }} style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Sign out</button>
           </div>
         </div>
       </header>
@@ -226,7 +260,7 @@ export default function UnitsPage() {
               const utasks = tasks.filter(t => t.unit_id === unit.id)
               const photoCount = unitPhotos.filter(p => p.unit_id === unit.id).length
               return (
-                <div key={unit.id} onClick={() => { setSelectedUnit(unit); setDrawerTab('tasks') }}
+                <div key={unit.id} onClick={() => openUnit(unit)}
                   style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '14px', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
@@ -234,8 +268,9 @@ export default function UnitsPage() {
                     <div style={{ fontWeight: 600, fontSize: 16 }}>{unit.name}</div>
                     <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>{unit.status === 'Under Contract' ? 'Contract' : unit.status}</span>
                   </div>
-                  {unit.size && <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 6 }}>{unit.size}</div>}
-                  {photoCount > 0 && <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 6 }}>{photoCount} photo{photoCount !== 1 ? 's' : ''}</div>}
+                  {unit.purchase_price && <div style={{ fontSize: 12, color: '#2B4D3F', fontWeight: 500, marginBottom: 4 }}>{fmt(unit.purchase_price)}</div>}
+                  {unit.size && <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 4 }}>{unit.size}</div>}
+                  {photoCount > 0 && <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 4 }}>{photoCount} photo{photoCount !== 1 ? 's' : ''}</div>}
                   {utasks.length > 0 && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#7A756E', marginBottom: 3 }}>
@@ -286,7 +321,7 @@ export default function UnitsPage() {
               </div>
 
               {/* Status */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
                 {STATUSES.map(s => {
                   const st = STATUS_STYLE[s]
                   const active = selectedUnit.status === s
@@ -296,6 +331,46 @@ export default function UnitsPage() {
                     </button>
                   )
                 })}
+              </div>
+
+              {/* Sales info */}
+              <div style={{ background: '#F5F3EE', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>DEAL INFO</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#7A756E', display: 'block', marginBottom: 3 }}>Purchase price</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#7A756E' }}>$</span>
+                      <input value={editPrice} onChange={e => setEditPrice(e.target.value)} placeholder="0" style={{ ...S.input, paddingLeft: 22, fontSize: 13 }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#7A756E', display: 'block', marginBottom: 3 }}>Realtor commission (%)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input value={editCommission} onChange={e => setEditCommission(e.target.value)} placeholder="3" style={{ ...S.input, paddingRight: 28, fontSize: 13 }} />
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#7A756E' }}>%</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#7A756E', display: 'block', marginBottom: 3 }}>Buyer name</label>
+                    <input value={editBuyer} onChange={e => setEditBuyer(e.target.value)} placeholder="Optional" style={{ ...S.input, fontSize: 13 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#7A756E', display: 'block', marginBottom: 3 }}>Close date</label>
+                    <input type="date" value={editCloseDate} onChange={e => setEditCloseDate(e.target.value)} style={{ ...S.input, fontSize: 13 }} />
+                  </div>
+                </div>
+                {/* Commission calc */}
+                {editPrice && editCommission && (
+                  <div style={{ fontSize: 12, color: '#2B4D3F', background: '#E8F0EC', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
+                    Commission: {fmt(parseFloat(editPrice.replace(/,/g, '') || '0') * parseFloat(editCommission || '0') / 100)}
+                  </div>
+                )}
+                <button onClick={saveSalesInfo} disabled={savingSales} style={{ ...S.btnPrimary, fontSize: 12, padding: '6px 14px', opacity: savingSales ? 0.6 : 1 }}>
+                  {savingSales ? 'Saving...' : 'Save deal info'}
+                </button>
               </div>
 
               {/* Progress bar */}
@@ -316,7 +391,7 @@ export default function UnitsPage() {
               })()}
 
               {/* Drawer tabs */}
-              <div style={{ display: 'flex', gap: 0, marginTop: 14, borderBottom: '1px solid #E2DDD6', marginLeft: -24, marginRight: -24, paddingLeft: 24 }}>
+              <div style={{ display: 'flex', marginTop: 14, borderBottom: '1px solid #E2DDD6', marginLeft: -24, marginRight: -24, paddingLeft: 24 }}>
                 {(['tasks', 'photos'] as const).map(t => (
                   <button key={t} onClick={() => setDrawerTab(t)} style={{ padding: '8px 16px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: drawerTab === t ? '#2B4D3F' : '#7A756E', borderBottom: drawerTab === t ? '2px solid #2B4D3F' : '2px solid transparent', marginBottom: -1, textTransform: 'capitalize' }}>
                     {t === 'photos' ? `Photos (${selectedUnitPhotos.length})` : `Tasks (${tasks.filter(t2 => t2.unit_id === selectedUnit.id).length})`}
@@ -337,7 +412,6 @@ export default function UnitsPage() {
                     <button onClick={() => setShowAddTask(true)} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px' }}>+ Task</button>
                   </div>
                 </div>
-
                 {showAddTask && (
                   <div style={{ background: '#F5F3EE', borderRadius: 10, padding: '12px', marginBottom: 12 }}>
                     <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task title" style={{ ...S.input, marginBottom: 8 }} autoFocus onKeyDown={e => e.key === 'Enter' && addTask()} />
@@ -349,7 +423,6 @@ export default function UnitsPage() {
                     </div>
                   </div>
                 )}
-
                 {unitTasks(selectedUnit.id).length === 0 && !showAddTask ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E', fontSize: 13 }}>No tasks yet.</div>
                 ) : (
@@ -387,23 +460,16 @@ export default function UnitsPage() {
             {/* PHOTOS TAB */}
             {drawerTab === 'photos' && (
               <div style={{ padding: '1.25rem 1.5rem', flex: 1 }}>
-                {/* Upload area */}
                 <div style={{ marginBottom: 20 }}>
                   <div onClick={() => unitPhotoRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 10, padding: '1.25rem', textAlign: 'center', cursor: 'pointer', color: '#7A756E', fontSize: 13, marginBottom: 8 }}>
                     Tap to upload photos for {selectedUnit.name}
                     <input ref={unitPhotoRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-                      onChange={e => {
-                        Array.from(e.target.files || []).forEach(f => uploadUnitPhoto(f, newPhotoCaption))
-                        if (unitPhotoRef.current) unitPhotoRef.current.value = ''
-                        setNewPhotoCaption('')
-                      }} />
+                      onChange={e => { Array.from(e.target.files || []).forEach(f => uploadUnitPhoto(f, newPhotoCaption)); if (unitPhotoRef.current) unitPhotoRef.current.value = ''; setNewPhotoCaption('') }} />
                   </div>
                   <input value={newPhotoCaption} onChange={e => setNewPhotoCaption(e.target.value)} placeholder="Caption (optional) — add before uploading" style={{ ...S.input, fontSize: 13 }} />
                 </div>
-
-                {/* Photo grid */}
                 {selectedUnitPhotos.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E', fontSize: 13 }}>No photos yet for this unit.</div>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E', fontSize: 13 }}>No photos yet.</div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                     {selectedUnitPhotos.map(photo => (

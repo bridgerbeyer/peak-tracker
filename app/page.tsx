@@ -14,7 +14,7 @@ const TRADE_COLORS: Record<string, string> = {
 type Entry = { id: number; created_at: string; category: string; area: string; unit?: string; description: string; photos: string[]; ai_insight?: string; logged_by?: string }
 type Plan = { id: number; created_at: string; name: string; phase: string; extracted_items: ExtractedItem[]; logged_by?: string }
 type ExtractedItem = { trade: string; item: string; detail: string }
-type Unit = { id: number; name: string; phase: string; status: string }
+type Unit = { id: number; name: string; phase: string; status: string; purchase_price?: number; realtor_commission?: number }
 type Task = { id: number; unit_id: number; completed: boolean }
 
 export default function Home() {
@@ -177,6 +177,7 @@ export default function Home() {
   }
 
   // Dashboard stats
+  const fmt = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(2)}M` : n >= 1000 ? `$${Math.round(n/1000)}K` : `$${Math.round(n).toLocaleString()}`
   const totalUnits = units.length
   const sold = units.filter(u => u.status === 'Sold').length
   const underContract = units.filter(u => u.status === 'Under Contract').length
@@ -184,6 +185,12 @@ export default function Home() {
   const totalTasks = tasks.length
   const completedTasks = tasks.filter(t => t.completed).length
   const constructionPct = totalTasks ? Math.round(completedTasks / totalTasks * 100) : 0
+
+  const soldUnits = units.filter(u => u.status === 'Sold' && u.purchase_price)
+  const contractUnits = units.filter(u => u.status === 'Under Contract' && u.purchase_price)
+  const totalClosed = soldUnits.reduce((sum, u) => sum + (u.purchase_price || 0), 0)
+  const totalPending = contractUnits.reduce((sum, u) => sum + (u.purchase_price || 0), 0)
+  const avgTicket = soldUnits.length ? totalClosed / soldUnits.length : 0
 
   const phaseStats = PHASES.map(p => {
     const phaseUnits = units.filter(u => u.phase === p)
@@ -222,9 +229,11 @@ export default function Home() {
             <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Construction Knowledge Base</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{userName[0]?.toUpperCase()}</div>
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{userName}</span>
+            <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
+              style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}>Sign out</button>
           </div>
         </div>
       </header>
@@ -262,6 +271,21 @@ export default function Home() {
                 <div key={m.label} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem' }}>
                   <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 4 }}>{m.label}</div>
                   <div style={{ fontSize: 28, fontWeight: 600, color: m.color || '#1A1814', lineHeight: 1.1 }}>{m.value}</div>
+                  <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>{m.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sales dollar metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+              {[
+                { label: 'Total deals closed', value: totalClosed ? fmt(totalClosed) : '—', sub: `${soldUnits.length} unit${soldUnits.length !== 1 ? 's' : ''} sold`, color: '#059669' },
+                { label: 'Pending deals', value: totalPending ? fmt(totalPending) : '—', sub: `${contractUnits.length} under contract`, color: '#D97706' },
+                { label: 'Avg ticket price', value: avgTicket ? fmt(avgTicket) : '—', sub: 'per sold unit', color: '#2563EB' },
+              ].map(m => (
+                <div key={m.label} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem' }}>
+                  <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 4 }}>{m.label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 600, color: m.color, lineHeight: 1.1 }}>{m.value}</div>
                   <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>{m.sub}</div>
                 </div>
               ))}
