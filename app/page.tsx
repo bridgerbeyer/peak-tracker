@@ -54,6 +54,7 @@ export default function Home() {
   const [planOutput, setPlanOutput] = useState('')
   const [planLoading, setPlanLoading] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [expandedImg, setExpandedImg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -223,6 +224,28 @@ export default function Home() {
   }).filter(p => p.total > 0)
 
   const recentLessons = entries.slice(0, 3)
+
+
+  async function exportPDF() {
+    setExporting(true)
+    try {
+      const resp = await fetch('/api/export-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries, filterTrade, filterPhase, generatedBy: userName })
+      })
+      const html = await resp.text()
+      const win = window.open('', '_blank')
+      if (win) {
+        win.document.write(html)
+        win.document.close()
+        setTimeout(() => { win.print() }, 800)
+      }
+    } catch(e) {
+      alert('Export failed. Please try again.')
+    }
+    setExporting(false)
+  }
 
   if (!nameSet) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: 'var(--bg)', fontFamily: 'DM Sans, sans-serif' }}>
@@ -524,9 +547,14 @@ export default function Home() {
                 <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
                 <span style={{ fontSize: 13, color: 'var(--gray)' }}>{filtered.length} improvement{filtered.length !== 1 ? 's' : ''}</span>
               </div>
-              <button onClick={() => setShowLogForm(f => !f)} style={{ padding: '8px 16px', background: showLogForm ? 'var(--surface2)' : 'var(--red)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {showLogForm ? '✕ Cancel' : '+ Log improvement'}
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={exportPDF} disabled={exporting || filtered.length === 0} style={{ padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', color: 'var(--text)', opacity: filtered.length === 0 ? 0.4 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {exporting ? '⏳' : '↓'} {exporting ? 'Exporting...' : 'Export PDF'}
+                </button>
+                <button onClick={() => setShowLogForm(f => !f)} style={{ padding: '8px 16px', background: showLogForm ? 'var(--surface2)' : 'var(--red)', color: showLogForm ? 'var(--text)' : '#fff', border: showLogForm ? '1px solid var(--border)' : 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {showLogForm ? '✕ Cancel' : '+ Log improvement'}
+                </button>
+              </div>
             </div>
 
             {/* Inline log form */}
