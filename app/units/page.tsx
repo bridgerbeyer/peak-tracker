@@ -461,12 +461,20 @@ export default function UnitsPage() {
             {drawerTab === 'photos' && (
               <div style={{ padding: '1.25rem 1.5rem', flex: 1 }}>
                 <div style={{ marginBottom: 20 }}>
-                  <div onClick={() => unitPhotoRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 10, padding: '1.25rem', textAlign: 'center', cursor: 'pointer', color: '#7A756E', fontSize: 13, marginBottom: 8 }}>
-                    Tap to upload photos for {selectedUnit.name}
+                  <div style={{ marginBottom: 8 }}>
+                    <label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 4 }}>Caption (optional)</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input value={newPhotoCaption} onChange={e => setNewPhotoCaption(e.target.value)} placeholder="Describe what you are documenting..." style={{ ...S.input, fontSize: 13, flex: 1 }} />
+                    </div>
+                  </div>
+                  <div onClick={() => unitPhotoRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 10, padding: '1rem', textAlign: 'center', cursor: 'pointer', color: '#2B4D3F', fontSize: 13, background: '#E8F0EC', fontWeight: 500 }}>
+                    + Upload photos for {selectedUnit.name}
                     <input ref={unitPhotoRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
                       onChange={e => { Array.from(e.target.files || []).forEach(f => uploadUnitPhoto(f, newPhotoCaption)); if (unitPhotoRef.current) unitPhotoRef.current.value = ''; setNewPhotoCaption('') }} />
                   </div>
-                  <input value={newPhotoCaption} onChange={e => setNewPhotoCaption(e.target.value)} placeholder="Caption (optional) — add before uploading" style={{ ...S.input, fontSize: 13 }} />
+                  {newPhotoCaption && (
+                    <div style={{ fontSize: 12, color: '#7A756E', marginTop: 6, fontStyle: 'italic' }}>Caption ready: "{newPhotoCaption}" — tap above to attach it to your photos</div>
+                  )}
                 </div>
                 {selectedUnitPhotos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: '#7A756E', fontSize: 13 }}>No photos yet.</div>

@@ -243,8 +243,8 @@ export default function Home() {
           <Link href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#7A756E', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</Link>
           {([
             { key: 'dashboard', label: 'Dashboard' },
-            { key: 'log', label: 'Log lesson' },
-            { key: 'library', label: `Library (${entries.length})` },
+            { key: 'log', label: 'Phase improvements' },
+            { key: 'library', label: `Build playbook (${entries.length})` },
             { key: 'plans', label: `Plans (${plans.length})` },
             { key: 'phaseplan', label: 'Phase planner' },
           ] as const).map(t => (
@@ -403,7 +403,7 @@ export default function Home() {
             {/* Quick actions */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <Link href="/units" style={{ flex: 1, display: 'block', background: '#2B4D3F', color: '#fff', borderRadius: 10, padding: '14px', textAlign: 'center', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Go to Unit Status</Link>
-              <button onClick={() => setTab('log')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Log a lesson</button>
+              <button onClick={() => setTab('log')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Phase improvements</button>
               <button onClick={() => setTab('phaseplan')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Generate spec sheet</button>
             </div>
           </div>
@@ -412,8 +412,8 @@ export default function Home() {
         {/* LOG LESSON */}
         {tab === 'log' && (
           <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem' }}>
-            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Log a lesson</div>
-            <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 20 }}>Document something to do differently — becomes the spec for future phases.</div>
+            <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Phase improvements</div>
+            <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 20 }}>Document what to do differently — builds your playbook for future phases.</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Trade *</label>
                 <select value={trade} onChange={e => setTrade(e.target.value)} style={S.input}><option value="">Select trade...</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select></div>
@@ -422,6 +422,13 @@ export default function Home() {
             </div>
             <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Short title (optional)</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Corner backing for drywall" style={S.input} /></div>
+            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Related unit (optional)</label>
+              <select value={title.startsWith('Unit:') ? title.replace('Unit:','').trim() : ''} onChange={e => e.target.value ? setTitle('Unit:' + e.target.value) : setTitle('')} style={S.input}>
+                <option value="">No specific unit</option>
+                {units.map(u => <option key={u.id} value={u.name}>{u.name} — {u.phase}</option>)}
+              </select>
+              <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>Link this improvement to a specific unit to avoid repeat notes.</div>
+            </div>
             <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Description *</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What would you do differently? What should be specified for future phases?" style={{ ...S.input, minHeight: 100, resize: 'vertical' }} /></div>
             <div style={{ marginBottom: 20 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Photos</label>
@@ -431,7 +438,7 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => { setTrade(''); setPhase('Phase 1'); setDescription(''); setPhotos([]); setTitle('') }} style={{ padding: '9px 18px', border: '1px solid #E2DDD6', borderRadius: 8, background: 'transparent', fontSize: 14, color: '#7A756E', cursor: 'pointer' }}>Clear</button>
               <button onClick={submitEntry} disabled={submitting || !trade || !description.trim()} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#2B4D3F', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', opacity: (!trade || !description.trim()) ? 0.5 : 1 }}>
-                {submitting ? 'Saving...' : 'Save lesson'}</button>
+                {submitting ? 'Saving...' : 'Save improvement'}</button>
             </div>
           </div>
         )}
@@ -527,9 +534,9 @@ export default function Home() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={filterTrade} onChange={e => setFilterTrade(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All trades</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select>
               <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
-              <span style={{ fontSize: 13, color: '#7A756E' }}>{filtered.length} lesson{filtered.length !== 1 ? 's' : ''}</span>
+              <span style={{ fontSize: 13, color: '#7A756E' }}>{filtered.length} improvement{filtered.length !== 1 ? 's' : ''}</span>
             </div>
-            {filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No lessons yet.</div>
+            {filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No improvements logged yet.</div>
               : Object.entries(tradeGroups).map(([tradeName, items]) => (
                 <div key={tradeName} style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -552,7 +559,7 @@ export default function Home() {
                       </div>
                       <div style={{ fontSize: 13, color: '#4B4640', lineHeight: 1.6, marginBottom: entry.ai_insight ? 10 : 0 }}>{entry.description}</div>
                       {entry.photos?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{entry.photos.map((p, i) => <img key={i} src={p} style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 8, border: '1px solid #E2DDD6' }} />)}</div>}
-                      {entry.ai_insight && <div style={{ background: '#F5F3EE', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#4B4640', lineHeight: 1.6, borderLeft: '3px solid #2B4D3F' }}><div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 4 }}>SPEC RECOMMENDATION</div>{entry.ai_insight}</div>}
+                      {entry.ai_insight && <div style={{ background: '#F5F3EE', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#4B4640', lineHeight: 1.6, borderLeft: '3px solid #2B4D3F' }}><div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 4 }}>AI SPEC NOTE</div>{entry.ai_insight}</div>}
                     </div>
                   ))}
                 </div>
