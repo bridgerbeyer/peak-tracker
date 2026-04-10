@@ -28,6 +28,15 @@ function fmt(n: number) {
 }
 
 export default function UnitsPage() {
+  const [theme, setTheme] = useState<'dark'|'light'>('dark')
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    localStorage.setItem('pcs_theme', next)
+    document.documentElement.setAttribute('data-theme', next)
+  }
+
   const [units, setUnits] = useState<Unit[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [images, setImages] = useState<TaskImage[]>([])
@@ -65,6 +74,8 @@ export default function UnitsPage() {
   useEffect(() => {
     const saved = localStorage.getItem('pcs_username')
     if (saved) setUserName(saved)
+    const savedTheme = localStorage.getItem('pcs_theme') as 'dark'|'light'|null
+    if (savedTheme) { setTheme(savedTheme); document.documentElement.setAttribute('data-theme', savedTheme) }
     fetchAll()
   }, [])
 
@@ -194,14 +205,14 @@ export default function UnitsPage() {
   const selectedUnitPhotos = selectedUnit ? unitPhotos.filter(p => p.unit_id === selectedUnit.id) : []
 
   const S = {
-    input: { width: '100%', border: '1px solid #2E2E2E', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: '#F5F5F5', background: '#1A1A1A' } as React.CSSProperties,
-    btn: { padding: '8px 16px', border: '1px solid #2E2E2E', borderRadius: 8, background: 'transparent', fontSize: 13, cursor: 'pointer', color: '#F5F5F5', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
-    btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: '#CC2222', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
+    input: { width: '100%', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'DM Sans, sans-serif', color: 'var(--text)', background: 'var(--surface)' } as React.CSSProperties,
+    btn: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'transparent', fontSize: 13, cursor: 'pointer', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
+    btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--red)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#111111', fontFamily: 'DM Sans, sans-serif' }}>
-      <header style={{ background: '#CC2222', padding: '0 1.5rem' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'DM Sans, sans-serif' }}>
+      <header style={{ background: 'var(--red)', padding: '0 1.5rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Link href="/" style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>PEAK CONDO STORAGE</Link>
@@ -212,13 +223,14 @@ export default function UnitsPage() {
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {userName && <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>{userName}</span>}
-            <button onClick={() => setShowAddUnit(true)} style={{ ...S.btnPrimary, background: 'rgba(255,255,255,0.15)', fontSize: 12, padding: '6px 14px' }}>+ Add unit</button>
-            <button onClick={async () => { const { createClient } = await import('@/lib/supabase-browser'); await createClient().auth.signOut(); window.location.href = '/login' }} style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Sign out</button>
+            <button onClick={toggleTheme} style={{ fontSize: 13, color: 'var(--gray)', background: 'var(--surface)', border: '1px solid var(--border)', cursor: 'pointer', padding: '5px 10px', borderRadius: 6 }}>{theme === 'dark' ? '☀' : '◑'}</button>
+            <button onClick={() => setShowAddUnit(true)} style={{ ...S.btnPrimary, fontSize: 12, padding: '6px 14px' }}>+ Add unit</button>
+            <button onClick={async () => { const { createClient } = await import('@/lib/supabase-browser'); await createClient().auth.signOut(); window.location.href = '/login' }} style={{ fontSize: 12, color: 'var(--gray)', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>Sign out</button>
           </div>
         </div>
       </header>
 
-      <div style={{ background: '#1A1A1A', borderBottom: '1px solid #E2DDD6' }}>
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid #E2DDD6' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex' }}>
             {PHASES.map(p => (
@@ -249,9 +261,9 @@ export default function UnitsPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#8A8A8A' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray)' }}>Loading...</div>
         ) : filteredUnits.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#8A8A8A', fontSize: 14 }}>No units found.</div>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray)', fontSize: 14 }}>No units found.</div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
             {filteredUnits.map(unit => {
@@ -261,23 +273,23 @@ export default function UnitsPage() {
               const photoCount = unitPhotos.filter(p => p.unit_id === unit.id).length
               return (
                 <div key={unit.id} onClick={() => openUnit(unit)}
-                  style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '14px', cursor: 'pointer' }}
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px', cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                     <div style={{ fontWeight: 600, fontSize: 16 }}>{unit.name}</div>
                     <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 99, background: st.bg, color: st.color, border: `1px solid ${st.border}` }}>{unit.status === 'Under Contract' ? 'Contract' : unit.status}</span>
                   </div>
-                  {unit.purchase_price && <div style={{ fontSize: 12, color: '#CC2222', fontWeight: 500, marginBottom: 4 }}>{fmt(unit.purchase_price)}</div>}
-                  {unit.size && <div style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>{unit.size}</div>}
-                  {photoCount > 0 && <div style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>{photoCount} photo{photoCount !== 1 ? 's' : ''}</div>}
+                  {unit.purchase_price && <div style={{ fontSize: 12, color: 'var(--red)', fontWeight: 500, marginBottom: 4 }}>{fmt(unit.purchase_price)}</div>}
+                  {unit.size && <div style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 4 }}>{unit.size}</div>}
+                  {photoCount > 0 && <div style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 4 }}>{photoCount} photo{photoCount !== 1 ? 's' : ''}</div>}
                   {utasks.length > 0 && (
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#8A8A8A', marginBottom: 3 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--gray)', marginBottom: 3 }}>
                         <span>{pct}%</span>
                         <span>{utasks.filter(t => t.completed).length}/{utasks.length}</span>
                       </div>
-                      <div style={{ background: '#111111', borderRadius: 99, height: 4, overflow: 'hidden' }}>
+                      <div style={{ background: 'var(--bg)', borderRadius: 99, height: 4, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: pct === 100 ? '#22AA66' : '#CC2222', transition: 'width 0.3s' }} />
                       </div>
                     </div>
@@ -292,11 +304,11 @@ export default function UnitsPage() {
       {/* Add Unit Modal */}
       {showAddUnit && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div style={{ background: '#1A1A1A', borderRadius: 16, padding: '1.5rem', width: '100%', maxWidth: 400 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '1.5rem', width: '100%', maxWidth: 400 }}>
             <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 16 }}>Add unit</div>
-            <div style={{ marginBottom: 10 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 4 }}>Unit ID</label><input value={newUnitName} onChange={e => setNewUnitName(e.target.value)} placeholder="e.g. A13" style={S.input} autoFocus /></div>
-            <div style={{ marginBottom: 10 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 4 }}>Phase</label><select value={newUnitPhase} onChange={e => setNewUnitPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
-            <div style={{ marginBottom: 16 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 4 }}>Size (optional)</label><input value={newUnitSize} onChange={e => setNewUnitSize(e.target.value)} placeholder="e.g. 10x20" style={S.input} /></div>
+            <div style={{ marginBottom: 10 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Unit ID</label><input value={newUnitName} onChange={e => setNewUnitName(e.target.value)} placeholder="e.g. A13" style={S.input} autoFocus /></div>
+            <div style={{ marginBottom: 10 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Phase</label><select value={newUnitPhase} onChange={e => setNewUnitPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
+            <div style={{ marginBottom: 16 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Size (optional)</label><input value={newUnitSize} onChange={e => setNewUnitSize(e.target.value)} placeholder="e.g. 10x20" style={S.input} /></div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setShowAddUnit(false)} style={S.btn}>Cancel</button>
               <button onClick={addUnit} style={S.btnPrimary}>Add unit</button>
@@ -308,16 +320,16 @@ export default function UnitsPage() {
       {/* Unit Detail Drawer */}
       {selectedUnit && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 50, display: 'flex', justifyContent: 'flex-end' }} onClick={() => setSelectedUnit(null)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#1A1A1A', width: '100%', maxWidth: 560, height: '100%', overflowY: 'auto', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', width: '100%', maxWidth: 560, height: '100%', overflowY: 'auto', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column' }}>
 
             {/* Drawer header */}
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #E2DDD6', position: 'sticky', top: 0, background: '#1A1A1A', zIndex: 10 }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #E2DDD6', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedUnit.name}</div>
-                  <span style={{ fontSize: 11, color: '#8A8A8A' }}>{selectedUnit.phase}</span>
+                  <span style={{ fontSize: 11, color: 'var(--gray)' }}>{selectedUnit.phase}</span>
                 </div>
-                <button onClick={() => setSelectedUnit(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8A8A8A' }}>×</button>
+                <button onClick={() => setSelectedUnit(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--gray)' }}>×</button>
               </div>
 
               {/* Status */}
@@ -334,37 +346,37 @@ export default function UnitsPage() {
               </div>
 
               {/* Sales info */}
-              <div style={{ background: '#111111', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 10 }}>DEAL INFO</div>
+              <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: 'var(--gray)', marginBottom: 10 }}>DEAL INFO</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
                   <div>
-                    <label style={{ fontSize: 11, color: '#8A8A8A', display: 'block', marginBottom: 3 }}>Purchase price</label>
+                    <label style={{ fontSize: 11, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Purchase price</label>
                     <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#8A8A8A' }}>$</span>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--gray)' }}>$</span>
                       <input value={editPrice} onChange={e => setEditPrice(e.target.value)} placeholder="0" style={{ ...S.input, paddingLeft: 22, fontSize: 13 }} />
                     </div>
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, color: '#8A8A8A', display: 'block', marginBottom: 3 }}>Realtor commission (%)</label>
+                    <label style={{ fontSize: 11, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Realtor commission (%)</label>
                     <div style={{ position: 'relative' }}>
                       <input value={editCommission} onChange={e => setEditCommission(e.target.value)} placeholder="3" style={{ ...S.input, paddingRight: 28, fontSize: 13 }} />
-                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: '#8A8A8A' }}>%</span>
+                      <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--gray)' }}>%</span>
                     </div>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                   <div>
-                    <label style={{ fontSize: 11, color: '#8A8A8A', display: 'block', marginBottom: 3 }}>Buyer name</label>
+                    <label style={{ fontSize: 11, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Buyer name</label>
                     <input value={editBuyer} onChange={e => setEditBuyer(e.target.value)} placeholder="Optional" style={{ ...S.input, fontSize: 13 }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 11, color: '#8A8A8A', display: 'block', marginBottom: 3 }}>Close date</label>
+                    <label style={{ fontSize: 11, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Close date</label>
                     <input type="date" value={editCloseDate} onChange={e => setEditCloseDate(e.target.value)} style={{ ...S.input, fontSize: 13 }} />
                   </div>
                 </div>
                 {/* Commission calc */}
                 {editPrice && editCommission && (
-                  <div style={{ fontSize: 12, color: '#CC2222', background: 'rgba(204,34,34,0.12)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: 'var(--red)', background: 'var(--red-dim)', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>
                     Commission: {fmt(parseFloat(editPrice.replace(/,/g, '') || '0') * parseFloat(editCommission || '0') / 100)}
                   </div>
                 )}
@@ -379,11 +391,11 @@ export default function UnitsPage() {
                 const ut = tasks.filter(t => t.unit_id === selectedUnit.id)
                 return (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8A8A8A', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
                       <span>Construction progress</span>
                       <span>{ut.filter(t => t.completed).length}/{ut.length} tasks · {pct}%</span>
                     </div>
-                    <div style={{ background: '#111111', borderRadius: 99, height: 6, overflow: 'hidden' }}>
+                    <div style={{ background: 'var(--bg)', borderRadius: 99, height: 6, overflow: 'hidden' }}>
                       <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: pct === 100 ? '#22AA66' : '#CC2222', transition: 'width 0.4s' }} />
                     </div>
                   </div>
@@ -407,13 +419,13 @@ export default function UnitsPage() {
                   <div style={{ fontSize: 13, fontWeight: 500 }}>Tasks</div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     {tasks.filter(t => t.unit_id === selectedUnit.id).length === 0 && (
-                      <button onClick={addDefaultTasks} style={{ ...S.btn, fontSize: 12, padding: '5px 10px', color: '#CC2222', borderColor: '#CC2222' }}>Use template</button>
+                      <button onClick={addDefaultTasks} style={{ ...S.btn, fontSize: 12, padding: '5px 10px', color: 'var(--red)', borderColor: '#CC2222' }}>Use template</button>
                     )}
                     <button onClick={() => setShowAddTask(true)} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px' }}>+ Task</button>
                   </div>
                 </div>
                 {showAddTask && (
-                  <div style={{ background: '#111111', borderRadius: 10, padding: '12px', marginBottom: 12 }}>
+                  <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px', marginBottom: 12 }}>
                     <input value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} placeholder="Task title" style={{ ...S.input, marginBottom: 8 }} autoFocus onKeyDown={e => e.key === 'Enter' && addTask()} />
                     <input value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} placeholder="Description (optional)" style={{ ...S.input, marginBottom: 8 }} />
                     <input type="date" value={newTaskDue} onChange={e => setNewTaskDue(e.target.value)} style={{ ...S.input, marginBottom: 10 }} />
@@ -424,7 +436,7 @@ export default function UnitsPage() {
                   </div>
                 )}
                 {unitTasks(selectedUnit.id).length === 0 && !showAddTask ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#8A8A8A', fontSize: 13 }}>No tasks yet.</div>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)', fontSize: 13 }}>No tasks yet.</div>
                 ) : (
                   unitTasks(selectedUnit.id).map(task => (
                     <div key={task.id} style={{ borderBottom: '1px solid #F5F3EE', paddingBottom: 14, marginBottom: 14 }}>
@@ -432,22 +444,22 @@ export default function UnitsPage() {
                         <input type="checkbox" checked={task.completed} onChange={e => toggleTask(task.id, e.target.checked)} style={{ width: 18, height: 18, marginTop: 2, accentColor: '#CC2222', flexShrink: 0, cursor: 'pointer' }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 14, fontWeight: 500, color: task.completed ? '#7A756E' : '#1A1814', textDecoration: task.completed ? 'line-through' : 'none' }}>{task.title}</div>
-                          {task.description && <div style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>{task.description}</div>}
-                          {task.due_date && <div style={{ fontSize: 11, color: '#8A8A8A', marginTop: 2 }}>Due {new Date(task.due_date).toLocaleDateString()}</div>}
+                          {task.description && <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 2 }}>{task.description}</div>}
+                          {task.due_date && <div style={{ fontSize: 11, color: 'var(--gray)', marginTop: 2 }}>Due {new Date(task.due_date).toLocaleDateString()}</div>}
                           {task.images && task.images.length > 0 && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                               {task.images.map(img => (
                                 <div key={img.id} style={{ position: 'relative' }}>
-                                  <img src={img.image_data} onClick={() => setExpandedImg(img.image_data)} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #2E2E2E', cursor: 'pointer' }} />
+                                  <img src={img.image_data} onClick={() => setExpandedImg(img.image_data)} style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer' }} />
                                   <button onClick={() => deleteTaskImage(img.id)} style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', background: '#991B1B', color: '#fff', border: 'none', fontSize: 9, cursor: 'pointer' }}>x</button>
                                 </div>
                               ))}
                             </div>
                           )}
                           <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                            <button onClick={() => imgRefs.current[task.id]?.click()} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid #2E2E2E', borderRadius: 6, background: 'transparent', color: '#8A8A8A', cursor: 'pointer' }}>+ Photo</button>
+                            <button onClick={() => imgRefs.current[task.id]?.click()} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--gray)', cursor: 'pointer' }}>+ Photo</button>
                             <input ref={el => { imgRefs.current[task.id] = el }} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadTaskImage(task.id, f) }} />
-                            <button onClick={() => deleteTask(task.id)} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid #2E2E2E', borderRadius: 6, background: 'transparent', color: '#8A8A8A', cursor: 'pointer' }}>Delete</button>
+                            <button onClick={() => deleteTask(task.id)} style={{ fontSize: 11, padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--gray)', cursor: 'pointer' }}>Delete</button>
                           </div>
                         </div>
                       </div>
@@ -462,32 +474,32 @@ export default function UnitsPage() {
               <div style={{ padding: '1.25rem 1.5rem', flex: 1 }}>
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ marginBottom: 8 }}>
-                    <label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 4 }}>Caption (optional)</label>
+                    <label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Caption (optional)</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input value={newPhotoCaption} onChange={e => setNewPhotoCaption(e.target.value)} placeholder="Describe what you are documenting..." style={{ ...S.input, fontSize: 13, flex: 1 }} />
                     </div>
                   </div>
-                  <div onClick={() => unitPhotoRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 10, padding: '1rem', textAlign: 'center', cursor: 'pointer', color: '#CC2222', fontSize: 13, background: 'rgba(204,34,34,0.12)', fontWeight: 500 }}>
+                  <div onClick={() => unitPhotoRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 10, padding: '1rem', textAlign: 'center', cursor: 'pointer', color: 'var(--red)', fontSize: 13, background: 'var(--red-dim)', fontWeight: 500 }}>
                     + Upload photos for {selectedUnit.name}
                     <input ref={unitPhotoRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
                       onChange={e => { Array.from(e.target.files || []).forEach(f => uploadUnitPhoto(f, newPhotoCaption)); if (unitPhotoRef.current) unitPhotoRef.current.value = ''; setNewPhotoCaption('') }} />
                   </div>
                   {newPhotoCaption && (
-                    <div style={{ fontSize: 12, color: '#8A8A8A', marginTop: 6, fontStyle: 'italic' }}>Caption ready: "{newPhotoCaption}" — tap above to attach it to your photos</div>
+                    <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 6, fontStyle: 'italic' }}>Caption ready: "{newPhotoCaption}" — tap above to attach it to your photos</div>
                   )}
                 </div>
                 {selectedUnitPhotos.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: '#8A8A8A', fontSize: 13 }}>No photos yet.</div>
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)', fontSize: 13 }}>No photos yet.</div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                     {selectedUnitPhotos.map(photo => (
-                      <div key={photo.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid #2E2E2E' }}>
+                      <div key={photo.id} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
                         <img src={photo.image_data} onClick={() => setExpandedImg(photo.image_data)} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', cursor: 'pointer', display: 'block' }} />
-                        <div style={{ padding: '8px 10px', background: '#1A1A1A' }}>
-                          {photo.caption && <div style={{ fontSize: 12, color: '#B0B0B0', marginBottom: 4 }}>{photo.caption}</div>}
+                        <div style={{ padding: '8px 10px', background: 'var(--surface)' }}>
+                          {photo.caption && <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 4 }}>{photo.caption}</div>}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: 11, color: '#8A8A8A' }}>{new Date(photo.created_at).toLocaleDateString()}</span>
-                            <button onClick={() => deleteUnitPhoto(photo.id)} style={{ fontSize: 11, padding: '2px 6px', border: '1px solid #2E2E2E', borderRadius: 4, background: 'transparent', color: '#8A8A8A', cursor: 'pointer' }}>Remove</button>
+                            <span style={{ fontSize: 11, color: 'var(--gray)' }}>{new Date(photo.created_at).toLocaleDateString()}</span>
+                            <button onClick={() => deleteUnitPhoto(photo.id)} style={{ fontSize: 11, padding: '2px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'transparent', color: 'var(--gray)', cursor: 'pointer' }}>Remove</button>
                           </div>
                         </div>
                       </div>

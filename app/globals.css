@@ -5,30 +5,47 @@
 @tailwind utilities;
 
 :root {
-  --black: #0D0D0D;
-  --surface: #1A1A1A;
-  --surface2: #222222;
-  --border: #2E2E2E;
-  --border2: #3D3D3D;
+  --bg: #1C1C1E;
+  --surface: #2C2C2E;
+  --surface2: #3A3A3C;
+  --border: #3A3A3C;
+  --border2: #48484A;
   --red: #CC2222;
-  --red-light: #E03030;
-  --red-dim: rgba(204,34,34,0.12);
-  --gray: #8A8A8A;
-  --gray-light: #B0B0B0;
-  --white: #F5F5F5;
-  --white-dim: rgba(245,245,245,0.06);
-  --bg: #111111;
+  --red-hover: #E03030;
+  --red-dim: rgba(204,34,34,0.15);
+  --gray: #8E8E93;
+  --text: #F2F2F7;
+  --text2: #AEAEB2;
+  --text3: #636366;
+  --white: #FFFFFF;
+}
+
+[data-theme="light"] {
+  --bg: #F2F2F7;
+  --surface: #FFFFFF;
+  --surface2: #E5E5EA;
+  --border: #D1D1D6;
+  --border2: #C7C7CC;
+  --red: #CC2222;
+  --red-hover: #B01C1C;
+  --red-dim: rgba(204,34,34,0.08);
+  --gray: #6C6C70;
+  --text: #1C1C1E;
+  --text2: #3A3A3C;
+  --text3: #8E8E93;
+  --white: #FFFFFF;
 }
 
 * { box-sizing: border-box; }
 
 body {
   background: var(--bg);
-  color: var(--white);
+  color: var(--text);
   font-family: 'DM Sans', sans-serif;
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
 }
 
 input, select, textarea, button {
