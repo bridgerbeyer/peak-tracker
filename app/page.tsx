@@ -172,8 +172,8 @@ export default function Home() {
   const extractedByTrade = TRADES.reduce((acc, t) => { const items = allExtracted.filter(i => i.trade === t); if (items.length) acc[t] = items; return acc }, {} as Record<string, typeof allExtracted>)
 
   const S = {
-    input: { width: '100%', border: '1px solid #E2DDD6', borderRadius: 8, padding: '9px 12px', fontSize: 14, background: '#fff', color: '#1A1814', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
-    card: { background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1.25rem' } as React.CSSProperties,
+    input: { width: '100%', border: '1px solid #2E2E2E', borderRadius: 8, padding: '9px 12px', fontSize: 14, background: '#1A1A1A', color: '#F5F5F5', fontFamily: 'DM Sans, sans-serif' } as React.CSSProperties,
+    card: { background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '1.25rem' } as React.CSSProperties,
   }
 
   // Dashboard stats
@@ -209,38 +209,40 @@ export default function Home() {
   const recentLessons = entries.slice(0, 3)
 
   if (!nameSet) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#F5F3EE', fontFamily: 'DM Sans, sans-serif' }}>
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '2.5rem', maxWidth: 400, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.1em', color: '#7A756E', marginBottom: 8 }}>PEAK CONDO STORAGE</div>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', background: '#111111', fontFamily: 'DM Sans, sans-serif' }}>
+      <div style={{ background: '#1A1A1A', borderRadius: 16, border: '1px solid #2E2E2E', padding: '2.5rem', maxWidth: 400, width: '100%', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.1em', color: '#8A8A8A', marginBottom: 8 }}>PEAK CONDO STORAGE</div>
         <div style={{ fontSize: 22, fontWeight: 600, marginBottom: 8 }}>Construction Knowledge Base</div>
-        <div style={{ color: '#7A756E', fontSize: 14, marginBottom: 24 }}>Who is logging in?</div>
+        <div style={{ color: '#8A8A8A', fontSize: 14, marginBottom: 24 }}>Who is logging in?</div>
         <input value={userName} onChange={e => setUserName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSetName()} placeholder="Your name" style={{ ...S.input, marginBottom: 12, textAlign: 'center' }} autoFocus />
-        <button onClick={handleSetName} style={{ width: '100%', padding: '10px', background: '#2B4D3F', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>Enter</button>
+        <button onClick={handleSetName} style={{ width: '100%', padding: '10px', background: '#CC2222', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>Enter</button>
       </div>
     </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F3EE', fontFamily: 'DM Sans, sans-serif' }}>
-      <header style={{ background: '#2B4D3F', padding: '0 1.5rem' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.12em', color: 'rgba(255,255,255,0.5)' }}>PEAK CONDO STORAGE</span>
-            <span style={{ color: 'rgba(255,255,255,0.2)' }}>|</span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500 }}>Construction Knowledge Base</span>
+    <div style={{ minHeight: '100vh', background: '#111111', fontFamily: 'DM Sans, sans-serif' }}>
+      <header style={{ background: '#0D0D0D', borderBottom: '1px solid #2E2E2E', padding: '0 1.5rem' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <img src="/logo.png" alt="Peak Condo Storage" style={{ height: 34, width: 'auto' }} />
+            <div style={{ width: 1, height: 20, background: '#2E2E2E' }} />
+            <span style={{ fontSize: 12, color: '#8A8A8A', letterSpacing: '0.04em' }}>Construction Knowledge Base</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{userName[0]?.toUpperCase()}</div>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{userName}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#CC2222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, color: '#fff' }}>{userName[0]?.toUpperCase()}</div>
+              <span style={{ fontSize: 13, color: '#8A8A8A' }}>{userName}</span>
+            </div>
             <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login' }}
-              style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6 }}>Sign out</button>
+              style={{ fontSize: 12, color: '#8A8A8A', background: 'none', border: '1px solid #2E2E2E', cursor: 'pointer', padding: '5px 10px', borderRadius: 6 }}>Sign out</button>
           </div>
         </div>
       </header>
 
-      <div style={{ background: '#fff', borderBottom: '1px solid #E2DDD6' }}>
+      <div style={{ background: '#0D0D0D', borderBottom: '1px solid #2E2E2E' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', padding: '0 1.5rem' }}>
-          <Link href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#7A756E', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</Link>
+          <Link href="/units" style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: '#8A8A8A', borderBottom: '2px solid transparent', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Unit status</Link>
           {([
             { key: 'dashboard', label: 'Dashboard' },
             { key: 'log', label: 'Phase improvements' },
@@ -248,7 +250,7 @@ export default function Home() {
             { key: 'plans', label: `Plans (${plans.length})` },
             { key: 'phaseplan', label: 'Phase planner' },
           ] as const).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: tab === t.key ? '#2B4D3F' : '#7A756E', borderBottom: tab === t.key ? '2px solid #2B4D3F' : '2px solid transparent' }}>
+            <button key={t.key} onClick={() => setTab(t.key)} style={{ padding: '14px 18px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: tab === t.key ? '#F5F5F5' : '#8A8A8A', borderBottom: tab === t.key ? '2px solid #CC2222' : '2px solid transparent' }}>
               {t.label}
             </button>
           ))}
@@ -268,10 +270,10 @@ export default function Home() {
                 { label: 'Under contract', value: underContract, sub: `${totalUnits ? Math.round(underContract/totalUnits*100) : 0}% of total`, color: '#D97706' },
                 { label: 'Available', value: available, sub: `${totalUnits ? Math.round(available/totalUnits*100) : 0}% of total`, color: '#2563EB' },
               ].map(m => (
-                <div key={m.label} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem' }}>
-                  <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 4 }}>{m.label}</div>
+                <div key={m.label} style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '1rem 1.25rem' }}>
+                  <div style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 4 }}>{m.label}</div>
                   <div style={{ fontSize: 28, fontWeight: 600, color: m.color || '#1A1814', lineHeight: 1.1 }}>{m.value}</div>
-                  <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>{m.sub}</div>
+                  <div style={{ fontSize: 11, color: '#8A8A8A', marginTop: 4 }}>{m.sub}</div>
                 </div>
               ))}
             </div>
@@ -283,10 +285,10 @@ export default function Home() {
                 { label: 'Pending deals', value: totalPending ? fmt(totalPending) : '—', sub: `${contractUnits.length} under contract`, color: '#D97706' },
                 { label: 'Avg ticket price', value: avgTicket ? fmt(avgTicket) : '—', sub: 'per sold unit', color: '#2563EB' },
               ].map(m => (
-                <div key={m.label} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem' }}>
-                  <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 4 }}>{m.label}</div>
+                <div key={m.label} style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '1rem 1.25rem' }}>
+                  <div style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 4 }}>{m.label}</div>
                   <div style={{ fontSize: 22, fontWeight: 600, color: m.color, lineHeight: 1.1 }}>{m.value}</div>
-                  <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>{m.sub}</div>
+                  <div style={{ fontSize: 11, color: '#8A8A8A', marginTop: 4 }}>{m.sub}</div>
                 </div>
               ))}
             </div>
@@ -310,7 +312,7 @@ export default function Home() {
               </div>
               <div style={{ display: 'flex', gap: 16 }}>
                 {[{ label: 'Sold', color: '#059669' }, { label: 'Under Contract', color: '#D97706' }, { label: 'Available', color: '#E2DDD6', textColor: '#7A756E' }].map(l => (
-                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#7A756E' }}>
+                  <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#8A8A8A' }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: l.color }} />
                     {l.label}
                   </div>
@@ -322,9 +324,9 @@ export default function Home() {
               {/* Construction progress */}
               <div style={S.card}>
                 <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>Construction progress</div>
-                <div style={{ fontSize: 36, fontWeight: 700, color: '#2B4D3F', marginBottom: 4 }}>{constructionPct}%</div>
-                <div style={{ fontSize: 12, color: '#7A756E', marginBottom: 12 }}>{completedTasks} of {totalTasks} tasks complete across all units</div>
-                <div style={{ background: '#F5F3EE', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                <div style={{ fontSize: 36, fontWeight: 700, color: '#CC2222', marginBottom: 4 }}>{constructionPct}%</div>
+                <div style={{ fontSize: 12, color: '#8A8A8A', marginBottom: 12 }}>{completedTasks} of {totalTasks} tasks complete across all units</div>
+                <div style={{ background: '#111111', borderRadius: 99, height: 8, overflow: 'hidden' }}>
                   <div style={{ width: `${constructionPct}%`, height: '100%', borderRadius: 99, background: constructionPct === 100 ? '#059669' : '#2B4D3F', transition: 'width 0.4s' }} />
                 </div>
               </div>
@@ -339,9 +341,9 @@ export default function Home() {
                     { label: 'Trades covered', value: Object.keys(tradeGroups).length, action: () => setTab('library') },
                     { label: 'Spec items', value: allExtracted.length, action: () => setTab('plans') },
                   ].map(m => (
-                    <div key={m.label} onClick={m.action} style={{ background: '#F5F3EE', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: 20, fontWeight: 600, color: '#2B4D3F' }}>{m.value}</div>
-                      <div style={{ fontSize: 11, color: '#7A756E', marginTop: 2 }}>{m.label}</div>
+                    <div key={m.label} onClick={m.action} style={{ background: '#111111', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}>
+                      <div style={{ fontSize: 20, fontWeight: 600, color: '#CC2222' }}>{m.value}</div>
+                      <div style={{ fontSize: 11, color: '#8A8A8A', marginTop: 2 }}>{m.label}</div>
                     </div>
                   ))}
                 </div>
@@ -353,8 +355,8 @@ export default function Home() {
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Phase breakdown</div>
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${phaseStats.length}, 1fr)`, gap: 12 }}>
                 {phaseStats.map(p => (
-                  <div key={p.phase} style={{ border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px' }}>
-                    <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>{p.phase.toUpperCase()}</div>
+                  <div key={p.phase} style={{ border: '1px solid #2E2E2E', borderRadius: 10, padding: '14px' }}>
+                    <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 10 }}>{p.phase.toUpperCase()}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                       {[
                         { label: 'Total units', value: p.total },
@@ -363,19 +365,19 @@ export default function Home() {
                         { label: 'Available', value: p.available, color: '#2563EB' },
                       ].map(row => (
                         <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#7A756E' }}>{row.label}</span>
+                          <span style={{ color: '#8A8A8A' }}>{row.label}</span>
                           <span style={{ fontWeight: 500, color: row.color || '#1A1814' }}>{row.value}</span>
                         </div>
                       ))}
                     </div>
-                    <div style={{ fontSize: 11, color: '#7A756E', marginBottom: 4 }}>Construction {p.taskPct}%</div>
-                    <div style={{ background: '#F5F3EE', borderRadius: 99, height: 5, overflow: 'hidden' }}>
-                      <div style={{ width: `${p.taskPct}%`, height: '100%', borderRadius: 99, background: '#2B4D3F' }} />
+                    <div style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>Construction {p.taskPct}%</div>
+                    <div style={{ background: '#111111', borderRadius: 99, height: 5, overflow: 'hidden' }}>
+                      <div style={{ width: `${p.taskPct}%`, height: '100%', borderRadius: 99, background: '#CC2222' }} />
                     </div>
                   </div>
                 ))}
                 {phaseStats.length === 0 && (
-                  <div style={{ color: '#7A756E', fontSize: 13, gridColumn: '1/-1' }}>No unit data yet. <Link href="/units" style={{ color: '#2B4D3F' }}>Go to Unit Status →</Link></div>
+                  <div style={{ color: '#8A8A8A', fontSize: 13, gridColumn: '1/-1' }}>No unit data yet. <Link href="/units" style={{ color: '#CC2222' }}>Go to Unit Status →</Link></div>
                 )}
               </div>
             </div>
@@ -385,16 +387,16 @@ export default function Home() {
               <div style={S.card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>Recent lessons</div>
-                  <button onClick={() => setTab('library')} style={{ fontSize: 12, color: '#2B4D3F', background: 'none', border: 'none', cursor: 'pointer' }}>View all →</button>
+                  <button onClick={() => setTab('library')} style={{ fontSize: 12, color: '#CC2222', background: 'none', border: 'none', cursor: 'pointer' }}>View all →</button>
                 </div>
                 {recentLessons.map(e => (
                   <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid #F5F3EE', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: TRADE_COLORS[e.category] || '#6B7280', flexShrink: 0, marginTop: 5 }} />
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: '#1A1814' }}>{e.unit || e.category}</div>
-                      <div style={{ fontSize: 12, color: '#7A756E', marginTop: 1 }}>{e.description.slice(0, 100)}{e.description.length > 100 ? '...' : ''}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#F5F5F5' }}>{e.unit || e.category}</div>
+                      <div style={{ fontSize: 12, color: '#8A8A8A', marginTop: 1 }}>{e.description.slice(0, 100)}{e.description.length > 100 ? '...' : ''}</div>
                     </div>
-                    <span style={{ fontSize: 11, color: '#7A756E', flexShrink: 0, marginLeft: 'auto' }}>{e.area}</span>
+                    <span style={{ fontSize: 11, color: '#8A8A8A', flexShrink: 0, marginLeft: 'auto' }}>{e.area}</span>
                   </div>
                 ))}
               </div>
@@ -402,42 +404,42 @@ export default function Home() {
 
             {/* Quick actions */}
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <Link href="/units" style={{ flex: 1, display: 'block', background: '#2B4D3F', color: '#fff', borderRadius: 10, padding: '14px', textAlign: 'center', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Go to Unit Status</Link>
-              <button onClick={() => setTab('log')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Phase improvements</button>
-              <button onClick={() => setTab('phaseplan')} style={{ flex: 1, background: '#fff', border: '1px solid #E2DDD6', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#1A1814' }}>Generate spec sheet</button>
+              <Link href="/units" style={{ flex: 1, display: 'block', background: '#CC2222', color: '#fff', borderRadius: 10, padding: '14px', textAlign: 'center', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Go to Unit Status</Link>
+              <button onClick={() => setTab('log')} style={{ flex: 1, background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#F5F5F5' }}>Phase improvements</button>
+              <button onClick={() => setTab('phaseplan')} style={{ flex: 1, background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: '#F5F5F5' }}>Generate spec sheet</button>
             </div>
           </div>
         )}
 
         {/* LOG LESSON */}
         {tab === 'log' && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem' }}>
+          <div style={{ background: '#1A1A1A', borderRadius: 16, border: '1px solid #2E2E2E', padding: '1.5rem' }}>
             <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Phase improvements</div>
-            <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 20 }}>Document what to do differently — builds your playbook for future phases.</div>
+            <div style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 20 }}>Document what to do differently — builds your playbook for future phases.</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-              <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Trade *</label>
+              <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Trade *</label>
                 <select value={trade} onChange={e => setTrade(e.target.value)} style={S.input}><option value="">Select trade...</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select></div>
-              <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Phase</label>
+              <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Phase</label>
                 <select value={phase} onChange={e => setPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
             </div>
-            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Short title (optional)</label>
+            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Short title (optional)</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Corner backing for drywall" style={S.input} /></div>
-            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Related unit (optional)</label>
+            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Related unit (optional)</label>
               <select value={title.startsWith('Unit:') ? title.replace('Unit:','').trim() : ''} onChange={e => e.target.value ? setTitle('Unit:' + e.target.value) : setTitle('')} style={S.input}>
                 <option value="">No specific unit</option>
                 {units.map(u => <option key={u.id} value={u.name}>{u.name} — {u.phase}</option>)}
               </select>
-              <div style={{ fontSize: 11, color: '#7A756E', marginTop: 4 }}>Link this improvement to a specific unit to avoid repeat notes.</div>
+              <div style={{ fontSize: 11, color: '#8A8A8A', marginTop: 4 }}>Link this improvement to a specific unit to avoid repeat notes.</div>
             </div>
-            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Description *</label>
+            <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Description *</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What would you do differently? What should be specified for future phases?" style={{ ...S.input, minHeight: 100, resize: 'vertical' }} /></div>
-            <div style={{ marginBottom: 20 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Photos</label>
-              <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 8, padding: '1rem', textAlign: 'center', cursor: 'pointer', fontSize: 13, color: '#7A756E' }}>Tap to add photos<input ref={fileRef} type="file" multiple accept="image/*" onChange={handlePhotos} style={{ display: 'none' }} /></div>
-              {photos.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>{photos.map((p, i) => <div key={i} style={{ position: 'relative' }}><img src={p} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #E2DDD6' }} /><button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#991B1B', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer' }}>x</button></div>)}</div>}
+            <div style={{ marginBottom: 20 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Photos</label>
+              <div onClick={() => fileRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 8, padding: '1rem', textAlign: 'center', cursor: 'pointer', fontSize: 13, color: '#8A8A8A' }}>Tap to add photos<input ref={fileRef} type="file" multiple accept="image/*" onChange={handlePhotos} style={{ display: 'none' }} /></div>
+              {photos.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>{photos.map((p, i) => <div key={i} style={{ position: 'relative' }}><img src={p} style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid #2E2E2E' }} /><button onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: '#991B1B', color: '#fff', border: 'none', fontSize: 10, cursor: 'pointer' }}>x</button></div>)}</div>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => { setTrade(''); setPhase('Phase 1'); setDescription(''); setPhotos([]); setTitle('') }} style={{ padding: '9px 18px', border: '1px solid #E2DDD6', borderRadius: 8, background: 'transparent', fontSize: 14, color: '#7A756E', cursor: 'pointer' }}>Clear</button>
-              <button onClick={submitEntry} disabled={submitting || !trade || !description.trim()} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#2B4D3F', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', opacity: (!trade || !description.trim()) ? 0.5 : 1 }}>
+              <button onClick={() => { setTrade(''); setPhase('Phase 1'); setDescription(''); setPhotos([]); setTitle('') }} style={{ padding: '9px 18px', border: '1px solid #2E2E2E', borderRadius: 8, background: 'transparent', fontSize: 14, color: '#8A8A8A', cursor: 'pointer' }}>Clear</button>
+              <button onClick={submitEntry} disabled={submitting || !trade || !description.trim()} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#CC2222', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', opacity: (!trade || !description.trim()) ? 0.5 : 1 }}>
                 {submitting ? 'Saving...' : 'Save improvement'}</button>
             </div>
           </div>
@@ -446,21 +448,21 @@ export default function Home() {
         {/* PLANS */}
         {tab === 'plans' && (
           <div>
-            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem', marginBottom: 20 }}>
+            <div style={{ background: '#1A1A1A', borderRadius: 16, border: '1px solid #2E2E2E', padding: '1.5rem', marginBottom: 20 }}>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Upload blueprint</div>
-              <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 16 }}>Claude will read your PDF and extract trade-specific line items automatically.</div>
+              <div style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 16 }}>Claude will read your PDF and extract trade-specific line items automatically.</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Plan name</label><input value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Electrical Phase 1" style={S.input} /></div>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Phase</label><select value={planPhaseUpload} onChange={e => setPlanPhaseUpload(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
+                <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Plan name</label><input value={planName} onChange={e => setPlanName(e.target.value)} placeholder="e.g. Electrical Phase 1" style={S.input} /></div>
+                <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Phase</label><select value={planPhaseUpload} onChange={e => setPlanPhaseUpload(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
               </div>
-              <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>PDF file</label>
+              <div style={{ marginBottom: 12 }}><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>PDF file</label>
                 <div onClick={() => planFileRef.current?.click()} style={{ border: '1px dashed #C4BFB8', borderRadius: 8, padding: '1rem', textAlign: 'center', cursor: 'pointer', fontSize: 13, color: planFile ? '#2B4D3F' : '#7A756E', background: planFile ? '#E8F0EC' : 'transparent' }}>
                   {planFile ? planFile.name : 'Tap to select PDF blueprint'}
                   <input ref={planFileRef} type="file" accept="application/pdf" onChange={e => { const f = e.target.files?.[0]; if (f) { setPlanFile(f); setPlanName(f.name.replace('.pdf', '').replace(/_/g, ' ')) }}} style={{ display: 'none' }} />
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 8 }}>Extract trades</label>
+                <label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 8 }}>Extract trades</label>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   {(['all', 'selected'] as const).map(m => (
                     <button key={m} onClick={() => setExtractMode(m)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid', fontSize: 13, cursor: 'pointer', borderColor: extractMode === m ? '#2B4D3F' : '#E2DDD6', background: extractMode === m ? '#E8F0EC' : 'transparent', color: extractMode === m ? '#2B4D3F' : '#7A756E' }}>
@@ -479,45 +481,45 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              {uploadProgress && <div style={{ fontSize: 13, color: '#2B4D3F', background: '#E8F0EC', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>{uploadProgress}</div>}
+              {uploadProgress && <div style={{ fontSize: 13, color: '#CC2222', background: 'rgba(204,34,34,0.12)', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>{uploadProgress}</div>}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button onClick={uploadAndExtract} disabled={uploading || !planFile} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#2B4D3F', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', opacity: !planFile ? 0.5 : 1 }}>
+                <button onClick={uploadAndExtract} disabled={uploading || !planFile} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#CC2222', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer', opacity: !planFile ? 0.5 : 1 }}>
                   {uploading ? 'Extracting...' : 'Upload and extract'}
                 </button>
               </div>
             </div>
             {plans.length > 0 && (
               <>
-                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10 }}>UPLOADED PLANS</div>
+                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 10 }}>UPLOADED PLANS</div>
                 {plans.map(plan => (
-                  <div key={plan.id} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8 }}>
+                  <div key={plan.id} style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div>
                         <div style={{ fontWeight: 500, fontSize: 14 }}>{plan.name}</div>
-                        <div style={{ fontSize: 12, color: '#7A756E', marginTop: 2 }}>
-                          <span style={{ background: '#E8F0EC', color: '#2B4D3F', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{plan.phase}</span>
+                        <div style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>
+                          <span style={{ background: 'rgba(204,34,34,0.12)', color: '#CC2222', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{plan.phase}</span>
                           <span style={{ marginLeft: 8 }}>{new Date(plan.created_at).toLocaleDateString()}</span>
                           <span style={{ marginLeft: 8 }}>{plan.extracted_items?.length || 0} items</span>
                         </div>
                       </div>
-                      <button onClick={() => deletePlan(plan.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #E2DDD6', borderRadius: 6, background: 'transparent', color: '#7A756E', cursor: 'pointer' }}>Remove</button>
+                      <button onClick={() => deletePlan(plan.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #2E2E2E', borderRadius: 6, background: 'transparent', color: '#8A8A8A', cursor: 'pointer' }}>Remove</button>
                     </div>
                   </div>
                 ))}
-                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 10, marginTop: 20 }}>EXTRACTED LINE ITEMS BY TRADE</div>
+                <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 10, marginTop: 20 }}>EXTRACTED LINE ITEMS BY TRADE</div>
                 {Object.entries(extractedByTrade).map(([tradeName, items]) => (
                   <div key={tradeName} style={{ marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: TRADE_COLORS[tradeName] || '#6B7280' }} />
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{tradeName}</div>
-                      <div style={{ fontSize: 12, color: '#7A756E' }}>({items.length})</div>
+                      <div style={{ fontSize: 12, color: '#8A8A8A' }}>({items.length})</div>
                     </div>
-                    <div style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, overflow: 'hidden', marginLeft: 18 }}>
+                    <div style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, overflow: 'hidden', marginLeft: 18 }}>
                       {items.map((item, i) => (
                         <div key={i} style={{ padding: '10px 14px', borderBottom: i < items.length - 1 ? '1px solid #F5F3EE' : 'none', display: 'flex', gap: 12 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, minWidth: 160 }}>{item.item}</div>
-                          <div style={{ fontSize: 13, color: '#4B4640', flex: 1 }}>{item.detail}</div>
-                          <div style={{ fontSize: 11, color: '#7A756E', flexShrink: 0 }}>{item.planName}</div>
+                          <div style={{ fontSize: 13, color: '#B0B0B0', flex: 1 }}>{item.detail}</div>
+                          <div style={{ fontSize: 11, color: '#8A8A8A', flexShrink: 0 }}>{item.planName}</div>
                         </div>
                       ))}
                     </div>
@@ -534,32 +536,32 @@ export default function Home() {
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={filterTrade} onChange={e => setFilterTrade(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All trades</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select>
               <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
-              <span style={{ fontSize: 13, color: '#7A756E' }}>{filtered.length} improvement{filtered.length !== 1 ? 's' : ''}</span>
+              <span style={{ fontSize: 13, color: '#8A8A8A' }}>{filtered.length} improvement{filtered.length !== 1 ? 's' : ''}</span>
             </div>
-            {filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#7A756E', fontSize: 14 }}>No improvements logged yet.</div>
+            {filtered.length === 0 ? <div style={{ textAlign: 'center', padding: '3rem', color: '#8A8A8A', fontSize: 14 }}>No improvements logged yet.</div>
               : Object.entries(tradeGroups).map(([tradeName, items]) => (
                 <div key={tradeName} style={{ marginBottom: 24 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                     <div style={{ width: 10, height: 10, borderRadius: '50%', background: TRADE_COLORS[tradeName] || '#6B7280' }} />
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{tradeName}</div>
-                    <div style={{ fontSize: 12, color: '#7A756E' }}>({items.length})</div>
+                    <div style={{ fontSize: 12, color: '#8A8A8A' }}>({items.length})</div>
                   </div>
                   {items.map(entry => (
-                    <div key={entry.id} style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8, marginLeft: 18 }}>
+                    <div key={entry.id} style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: 8, marginLeft: 18 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
                         <div>
                           {entry.unit && <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 2 }}>{entry.unit}</div>}
-                          <div style={{ fontSize: 12, color: '#7A756E' }}>
-                            <span style={{ background: '#E8F0EC', color: '#2B4D3F', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{entry.area}</span>
+                          <div style={{ fontSize: 12, color: '#8A8A8A' }}>
+                            <span style={{ background: 'rgba(204,34,34,0.12)', color: '#CC2222', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{entry.area}</span>
                             <span style={{ marginLeft: 8 }}>{new Date(entry.created_at).toLocaleDateString()}</span>
                             {entry.logged_by && <span style={{ marginLeft: 8 }}>· {entry.logged_by}</span>}
                           </div>
                         </div>
-                        <button onClick={() => deleteEntry(entry.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #E2DDD6', borderRadius: 6, background: 'transparent', color: '#7A756E', cursor: 'pointer', flexShrink: 0 }}>Remove</button>
+                        <button onClick={() => deleteEntry(entry.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid #2E2E2E', borderRadius: 6, background: 'transparent', color: '#8A8A8A', cursor: 'pointer', flexShrink: 0 }}>Remove</button>
                       </div>
-                      <div style={{ fontSize: 13, color: '#4B4640', lineHeight: 1.6, marginBottom: entry.ai_insight ? 10 : 0 }}>{entry.description}</div>
-                      {entry.photos?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{entry.photos.map((p, i) => <img key={i} src={p} style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 8, border: '1px solid #E2DDD6' }} />)}</div>}
-                      {entry.ai_insight && <div style={{ background: '#F5F3EE', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#4B4640', lineHeight: 1.6, borderLeft: '3px solid #2B4D3F' }}><div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 4 }}>AI SPEC NOTE</div>{entry.ai_insight}</div>}
+                      <div style={{ fontSize: 13, color: '#B0B0B0', lineHeight: 1.6, marginBottom: entry.ai_insight ? 10 : 0 }}>{entry.description}</div>
+                      {entry.photos?.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>{entry.photos.map((p, i) => <img key={i} src={p} style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 8, border: '1px solid #2E2E2E' }} />)}</div>}
+                      {entry.ai_insight && <div style={{ background: '#111111', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#B0B0B0', lineHeight: 1.6, borderLeft: '3px solid #CC2222' }}><div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 4 }}>AI SPEC NOTE</div>{entry.ai_insight}</div>}
                     </div>
                   ))}
                 </div>
@@ -570,29 +572,29 @@ export default function Home() {
         {/* PHASE PLANNER */}
         {tab === 'phaseplan' && (
           <div>
-            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E2DDD6', padding: '1.5rem', marginBottom: 16 }}>
+            <div style={{ background: '#1A1A1A', borderRadius: 16, border: '1px solid #2E2E2E', padding: '1.5rem', marginBottom: 16 }}>
               <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 4 }}>Phase planner</div>
-              <div style={{ fontSize: 13, color: '#7A756E', marginBottom: 16 }}>Generate a spec sheet using your logged lessons and uploaded plan data.</div>
+              <div style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 16 }}>Generate a spec sheet using your logged lessons and uploaded plan data.</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Generate spec for</label>
+                <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Generate spec for</label>
                   <select value={planPhase} onChange={e => setPlanPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
-                <div><label style={{ fontSize: 12, color: '#7A756E', display: 'block', marginBottom: 5 }}>Trade (optional)</label>
+                <div><label style={{ fontSize: 12, color: '#8A8A8A', display: 'block', marginBottom: 5 }}>Trade (optional)</label>
                   <select value={planTrade} onChange={e => setPlanTrade(e.target.value)} style={S.input}><option value="">All trades</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select></div>
               </div>
-              <button onClick={generatePhasePlan} disabled={planLoading} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#2B4D3F', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
+              <button onClick={generatePhasePlan} disabled={planLoading} style={{ padding: '9px 20px', border: 'none', borderRadius: 8, background: '#CC2222', color: '#fff', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
                 {planLoading ? 'Generating...' : 'Generate spec sheet'}
               </button>
             </div>
             {planOutput && (
-              <div style={{ background: '#fff', border: '1px solid #E2DDD6', borderRadius: 16, padding: '1.5rem' }}>
+              <div style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', borderRadius: 16, padding: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                   <div>
-                    <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#7A756E', marginBottom: 4 }}>AI-GENERATED SPEC SHEET</div>
+                    <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: '#8A8A8A', marginBottom: 4 }}>AI-GENERATED SPEC SHEET</div>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{planPhase}{planTrade ? ` — ${planTrade}` : ' — All Trades'}</div>
                   </div>
-                  <button onClick={() => navigator.clipboard.writeText(planOutput)} style={{ padding: '7px 14px', border: '1px solid #E2DDD6', borderRadius: 8, background: 'transparent', fontSize: 12, color: '#7A756E', cursor: 'pointer' }}>Copy</button>
+                  <button onClick={() => navigator.clipboard.writeText(planOutput)} style={{ padding: '7px 14px', border: '1px solid #2E2E2E', borderRadius: 8, background: 'transparent', fontSize: 12, color: '#8A8A8A', cursor: 'pointer' }}>Copy</button>
                 </div>
-                <div style={{ fontSize: 14, color: '#4B4640', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{planOutput}</div>
+                <div style={{ fontSize: 14, color: '#B0B0B0', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{planOutput}</div>
               </div>
             )}
           </div>
