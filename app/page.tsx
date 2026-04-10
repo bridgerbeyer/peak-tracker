@@ -226,24 +226,73 @@ export default function Home() {
   const recentLessons = entries.slice(0, 3)
 
 
-  async function exportPDF() {
+  function exportPDF() {
     setExporting(true)
-    try {
-      const resp = await fetch('/api/export-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries, filterTrade, filterPhase, generatedBy: userName })
-      })
-      const html = await resp.text()
-      const win = window.open('', '_blank')
-      if (win) {
-        win.document.write(html)
-        win.document.close()
-        setTimeout(() => { win.print() }, 800)
-      }
-    } catch(e) {
-      alert('Export failed. Please try again.')
-    }
+    const TCOLORS: Record<string,string> = { Framing:'#D97706',Electrical:'#2563EB',Plumbing:'#059669',HVAC:'#DB2777','Fire Sprinkler':'#DC2626',Drywall:'#7C3AED',Concrete:'#6B7280',Finishing:'#0891B2',Other:'#92400E' }
+    const date = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
+    const fil = entries.filter((e:any)=>(!filterTrade||e.category===filterTrade)&&(!filterPhase||e.area===filterPhase))
+    const grps: Record<string,any[]> = {}
+    fil.forEach((e:any)=>{ if(!grps[e.category]) grps[e.category]=[]; grps[e.category].push(e) })
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Build Playbook</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;background:#fff;font-size:13px;line-height:1.5}
+.page{max-width:760px;margin:0 auto;padding:48px 48px 64px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #CC2222}
+.hdr h1{font-size:24px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.hdr p{font-size:12px;color:#666}
+.hdr-r{text-align:right;font-size:12px;color:#666}
+.hdr-r .d{font-size:13px;color:#1a1a1a;font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.chip{background:#f5f5f5;border-radius:6px;padding:5px 12px;font-size:12px;color:#444}
+.chip b{color:#1a1a1a}
+.trade{margin-bottom:28px}
+.trade-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid #e5e5e5}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.trade-hdr strong{font-size:14px}
+.trade-hdr span{font-size:12px;color:#888}
+.card{background:#fafafa;border:1px solid #e5e5e5;border-radius:10px;overflow:hidden;margin-bottom:14px;page-break-inside:avoid}
+.photos{display:grid;gap:2px}
+.photos img{width:100%;object-fit:cover;display:block}
+.body{padding:14px 16px}
+.title{font-size:14px;font-weight:700;margin-bottom:5px}
+.meta{display:flex;gap:7px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.badge{background:#fff0f0;color:#CC2222;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700}
+.muted{font-size:11px;color:#888}
+.desc{font-size:13px;color:#333;line-height:1.65}
+.ai{background:#fff;border-left:3px solid #CC2222;padding:8px 12px;margin-top:10px;border-radius:0 6px 6px 0}
+.ai-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;color:#999;margin-bottom:2px;text-transform:uppercase}
+.ai-txt{font-size:12px;color:#444;line-height:1.55}
+.footer{margin-top:40px;padding-top:12px;border-top:1px solid #e5e5e5;font-size:11px;color:#aaa;display:flex;justify-content:space-between}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card{page-break-inside:avoid}.trade{page-break-inside:avoid}}
+</style></head><body><div class="page">
+<div class="hdr"><div><h1>Build Playbook</h1><p>Peak Condo Storage &mdash; Construction Knowledge Base</p></div><div class="hdr-r"><div class="d">${date}</div>${userName?`<div style="margin-top:3px">Prepared by ${userName}</div>`:''}</div></div>
+<div class="chips">
+  <div class="chip">Improvements: <b>${fil.length}</b></div>
+  ${filterTrade?`<div class="chip">Trade: <b>${filterTrade}</b></div>`:''}
+  ${filterPhase?`<div class="chip">Phase: <b>${filterPhase}</b></div>`:''}
+  <div class="chip">Trades: <b>${Object.keys(grps).length}</b></div>
+</div>
+${Object.entries(grps).map(([trade,items])=>`
+<div class="trade">
+  <div class="trade-hdr"><div class="dot" style="background:${TCOLORS[trade]||'#6B7280'}"></div><strong>${trade}</strong><span>${items.length} item${items.length!==1?'s':''}</span></div>
+  ${items.map((e:any)=>`
+  <div class="card">
+    ${e.photos?.length>0?`<div class="photos" style="grid-template-columns:${e.photos.length===1?'1fr':e.photos.length===2?'1fr 1fr':'repeat(3,1fr)'}">${e.photos.map((p:string)=>`<img src="${p}" style="max-height:${e.photos.length===1?'260px':'175px'}">`).join('')}</div>`:''}
+    <div class="body">
+      ${e.unit?`<div class="title">${e.unit}</div>`:''}
+      <div class="meta"><span class="badge">${e.area}</span><span class="muted">${new Date(e.created_at).toLocaleDateString()}</span>${e.logged_by?`<span class="muted">&middot; ${e.logged_by}</span>`:''}</div>
+      <div class="desc">${e.description}</div>
+      ${e.ai_insight?`<div class="ai"><div class="ai-lbl">AI Spec Note</div><div class="ai-txt">${e.ai_insight}</div></div>`:''}
+    </div>
+  </div>`).join('')}
+</div>`).join('')}
+<div class="footer"><span>Peak Condo Storage &mdash; Build Playbook</span><span>Generated ${date}</span></div>
+</div><script>window.onload=function(){setTimeout(function(){window.print()},500)}</script></body></html>`
+
+    const win = window.open('','_blank')
+    if (win) { win.document.write(html); win.document.close() }
+    else alert('Please allow popups for this site to export PDF.')
     setExporting(false)
   }
 
