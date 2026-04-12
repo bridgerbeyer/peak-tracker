@@ -688,9 +688,9 @@ export default function UnitsPage() {
                     </div>
                   </div>
                 )}
-                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id).length === 0 && !showCOForm ? (
+                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id).length === 0 && !showCOForm ? (
                   <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)', fontSize: 13 }}>No change orders yet.</div>
-                ) : changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id).map((co: ChangeOrder) => {
+                ) : changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id).map((co: ChangeOrder) => {
                   const SC: Record<string,{bg:string;color:string}> = { Pending:{bg:'#FFFBEB',color:'#92400E'}, Approved:{bg:'#F0FDF4',color:'#166534'}, Rejected:{bg:'#FEF2F2',color:'#991B1B'}, Complete:{bg:'#EFF6FF',color:'#1E40AF'} }
                   const sc = SC[co.status] || SC.Pending
                   return (
@@ -715,10 +715,10 @@ export default function UnitsPage() {
                     </div>
                   )
                 })}
-                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id && c.status !== 'Rejected').length > 0 && (
+                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id && c.status !== 'Rejected').length > 0 && (
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
                     <span style={{ color: 'var(--gray)' }}>Total (excl. Rejected)</span>
-                    <span style={{ color: 'var(--text)' }}>{fmt(changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id && c.status !== 'Rejected').reduce((s: number, c: ChangeOrder) => s + c.amount, 0))}</span>
+                    <span style={{ color: 'var(--text)' }}>{fmt(changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id && c.status !== 'Rejected').reduce((s: number, c: ChangeOrder) => s + c.amount, 0))}</span>
                   </div>
                 )}
               </div>
