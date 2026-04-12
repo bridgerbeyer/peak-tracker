@@ -184,6 +184,7 @@ export default function Home() {
   const [planLoading, setPlanLoading] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [exportingXlsx, setExportingXlsx] = useState(false)
   const [expandedImg, setExpandedImg] = useState<string | null>(null)
 
   useEffect(() => {
@@ -354,6 +355,24 @@ export default function Home() {
 
   const recentLessons = entries.slice(0, 3)
 
+
+  async function exportExcel() {
+    setExportingXlsx(true)
+    try {
+      const resp = await fetch('/api/export-excel')
+      if (!resp.ok) throw new Error('Export failed')
+      const blob = await resp.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `PeakCondoStorage_Pipeline_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert('Export failed. Please try again.')
+    }
+    setExportingXlsx(false)
+  }
 
   function exportPDF() {
     setExporting(true)
@@ -633,6 +652,9 @@ ${Object.entries(grps).map(([trade,items])=>`
               <Link href="/units" style={{ flex: 1, display: 'block', background: 'var(--red)', color: '#fff', borderRadius: 10, padding: '14px', textAlign: 'center', textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Go to Unit Status</Link>
               <button onClick={() => { setTab('library'); setShowLogForm(true) }} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: 'var(--text)' }}>Log improvement</button>
               <button onClick={() => setTab('phaseplan')} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: 'var(--text)' }}>Generate spec sheet</button>
+              <button onClick={exportExcel} disabled={exportingXlsx} style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {exportingXlsx ? '⏳ Exporting...' : '↓ Export Excel'}
+              </button>
             </div>
           </div>
         )}
