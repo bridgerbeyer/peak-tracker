@@ -7,6 +7,7 @@ type Unit = { id: number; name: string; phase: string; status: string; size?: st
 type Task = { id: number; unit_id: number; title: string; description?: string; completed: boolean; due_date?: string; images?: TaskImage[] }
 type TaskImage = { id: number; task_id: number; image_data: string }
 type UnitPhoto = { id: number; unit_id: number; image_data: string; caption?: string; created_at: string }
+type UnitCost = { id: number; unit_id: number; label: string; amount: number }
 
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3']
 const STATUSES = ['Available', 'Under Contract', 'Sold']
@@ -41,6 +42,10 @@ export default function UnitsPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [images, setImages] = useState<TaskImage[]>([])
   const [unitPhotos, setUnitPhotos] = useState<UnitPhoto[]>([])
+  const [unitCosts, setUnitCosts] = useState<UnitCost[]>([])
+  const [newCostLabel, setNewCostLabel] = useState('')
+  const [newCostAmount, setNewCostAmount] = useState('')
+  const [addingCost, setAddingCost] = useState(false)
   const [phase, setPhase] = useState('Phase 1')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
@@ -80,16 +85,18 @@ export default function UnitsPage() {
   }, [])
 
   async function fetchAll() {
-    const [u, t, i, p] = await Promise.all([
+    const [u, t, i, p, c] = await Promise.all([
       supabase.from('units').select('*').order('name'),
       supabase.from('tasks').select('*').order('created_at'),
       supabase.from('task_images').select('*').order('created_at'),
       supabase.from('unit_photos').select('*').order('created_at', { ascending: false }),
+      supabase.from('unit_costs').select('*').order('created_at'),
     ])
     if (u.data) setUnits(u.data as Unit[])
     if (t.data) setTasks(t.data as Task[])
     if (i.data) setImages(i.data as TaskImage[])
     if (p.data) setUnitPhotos(p.data as UnitPhoto[])
+    if (c.data) setUnitCosts(c.data as UnitCost[])
     setLoading(false)
   }
 
@@ -107,6 +114,25 @@ export default function UnitsPage() {
     await supabase.from('units').update({ status }).eq('id', unitId)
     setUnits(prev => prev.map(u => u.id === unitId ? { ...u, status } : u))
     if (selectedUnit?.id === unitId) setSelectedUnit(prev => prev ? { ...prev, status } : prev)
+  }
+
+  async function addCost() {
+    if (!selectedUnit || !newCostLabel.trim() || !newCostAmount) return
+    setAddingCost(true)
+    const { data } = await supabase.from('unit_costs').insert({ unit_id: selectedUnit.id, label: newCostLabel.trim(), amount: parseFloat(newCostAmount) || 0 }).select().single()
+    if (data) setUnitCosts(prev => [...prev, data as UnitCost])
+    setNewCostLabel(''); setNewCostAmount('')
+    setAddingCost(false)
+  }
+
+  async function deleteCost(id: number) {
+    await supabase.from('unit_costs').delete().eq('id', id)
+    setUnitCosts(prev => prev.filter(c => c.id !== id))
+  }
+
+  async function updateCostAmount(id: number, amount: number) {
+    await supabase.from('unit_costs').update({ amount }).eq('id', id)
+    setUnitCosts(prev => prev.map(c => c.id === id ? { ...c, amount } : c))
   }
 
   async function saveSalesInfo() {
@@ -385,6 +411,90 @@ export default function UnitsPage() {
                 </button>
               </div>
 
+              {/* Costs / Concessions */}
+              {(() => {
+                const costs = unitCosts.filter(c => c.unit_id === selectedUnit.id)
+                const totalCosts = costs.reduce((s, c) => s + c.amount, 0)
+                const price = parseFloat(editPrice.replace(/,/g, '') || '0')
+                const commission = price * parseFloat(editCommission || '0') / 100
+                const net = price - commission - totalCosts
+
+                const PRESET_COSTS = ['Electrical', 'Plumbing', 'Flooring', 'HVAC', 'Drywall', 'Paint', 'Garage Door', 'Concrete', 'Framing', 'Other']
+
+                return (
+                  <div style={{ background: 'var(--bg)', borderRadius: 10, padding: '12px 14px', marginTop: 10 }}>
+                    <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: 'var(--gray)', marginBottom: 10 }}>COSTS & CONCESSIONS</div>
+
+                    {/* Existing costs */}
+                    {costs.map(cost => (
+                      <div key={cost.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                        <div style={{ fontSize: 13, color: 'var(--text)', flex: 1 }}>{cost.label}</div>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ position: 'absolute', left: 8, fontSize: 12, color: 'var(--gray)' }}>$</span>
+                          <input
+                            type="number"
+                            defaultValue={cost.amount}
+                            onBlur={e => updateCostAmount(cost.id, parseFloat(e.target.value) || 0)}
+                            style={{ ...S.input, width: 110, paddingLeft: 20, fontSize: 13, textAlign: 'right' }}
+                          />
+                        </div>
+                        <button onClick={() => deleteCost(cost.id)} style={{ fontSize: 11, padding: '3px 7px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--gray)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                      </div>
+                    ))}
+
+                    {/* Add new cost */}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 8, marginBottom: 12 }}>
+                      <div style={{ flex: 1, position: 'relative' }}>
+                        <input
+                          value={newCostLabel}
+                          onChange={e => setNewCostLabel(e.target.value)}
+                          placeholder="Cost label..."
+                          list="cost-presets"
+                          style={{ ...S.input, fontSize: 12 }}
+                        />
+                        <datalist id="cost-presets">
+                          {PRESET_COSTS.map(p => <option key={p} value={p} />)}
+                        </datalist>
+                      </div>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ position: 'absolute', left: 8, fontSize: 12, color: 'var(--gray)', zIndex: 1 }}>$</span>
+                        <input
+                          type="number"
+                          value={newCostAmount}
+                          onChange={e => setNewCostAmount(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && addCost()}
+                          placeholder="0"
+                          style={{ ...S.input, width: 90, paddingLeft: 20, fontSize: 12 }}
+                        />
+                      </div>
+                      <button onClick={addCost} disabled={addingCost || !newCostLabel.trim() || !newCostAmount} style={{ ...S.btnPrimary, fontSize: 12, padding: '6px 12px', opacity: (!newCostLabel.trim() || !newCostAmount) ? 0.4 : 1, flexShrink: 0 }}>+</button>
+                    </div>
+
+                    {/* Summary */}
+                    {price > 0 && (
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                        {costs.length > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
+                            <span>Total costs</span>
+                            <span style={{ color: '#DC2626' }}>- {fmt(totalCosts)}</span>
+                          </div>
+                        )}
+                        {commission > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
+                            <span>Commission ({editCommission}%)</span>
+                            <span style={{ color: '#DC2626' }}>- {fmt(commission)}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border2)' }}>
+                          <span style={{ color: 'var(--text)' }}>Net price</span>
+                          <span style={{ color: net >= 0 ? '#22AA66' : '#DC2626' }}>{fmt(net)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
               {/* Progress bar */}
               {tasks.filter(t => t.unit_id === selectedUnit.id).length > 0 && (() => {
                 const pct = progress(selectedUnit.id)
@@ -403,9 +513,9 @@ export default function UnitsPage() {
               })()}
 
               {/* Drawer tabs */}
-              <div style={{ display: 'flex', marginTop: 14, borderBottom: '1px solid #E2DDD6', marginLeft: -24, marginRight: -24, paddingLeft: 24 }}>
+              <div style={{ display: 'flex', marginTop: 14, borderBottom: '1px solid var(--border)', marginLeft: -24, marginRight: -24, paddingLeft: 24 }}>
                 {(['tasks', 'photos'] as const).map(t => (
-                  <button key={t} onClick={() => setDrawerTab(t)} style={{ padding: '8px 16px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: drawerTab === t ? '#2B4D3F' : '#7A756E', borderBottom: drawerTab === t ? '2px solid #2B4D3F' : '2px solid transparent', marginBottom: -1, textTransform: 'capitalize' }}>
+                  <button key={t} onClick={() => setDrawerTab(t)} style={{ padding: '8px 16px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: drawerTab === t ? 'var(--text)' : 'var(--gray)', borderBottom: drawerTab === t ? '2px solid var(--red)' : '2px solid transparent', marginBottom: -1, textTransform: 'capitalize' }}>
                     {t === 'photos' ? `Photos (${selectedUnitPhotos.length})` : `Tasks (${tasks.filter(t2 => t2.unit_id === selectedUnit.id).length})`}
                   </button>
                 ))}
