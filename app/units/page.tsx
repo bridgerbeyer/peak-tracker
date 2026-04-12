@@ -8,6 +8,7 @@ type Task = { id: number; unit_id: number; title: string; description?: string; 
 type TaskImage = { id: number; task_id: number; image_data: string }
 type UnitPhoto = { id: number; unit_id: number; image_data: string; caption?: string; created_at: string }
 type UnitCost = { id: number; unit_id: number; label: string; amount: number }
+type ChangeOrder = { id: number; unit_id: number; title: string; description?: string; amount: number; status: string; date: string; created_at: string }
 
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3']
 const STATUSES = ['Available', 'Under Contract', 'Sold']
@@ -46,10 +47,17 @@ export default function UnitsPage() {
   const [newCostLabel, setNewCostLabel] = useState('')
   const [newCostAmount, setNewCostAmount] = useState('')
   const [addingCost, setAddingCost] = useState(false)
+  const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([])
+  const [newCOTitle, setNewCOTitle] = useState('')
+  const [newCODesc, setNewCODesc] = useState('')
+  const [newCOAmount, setNewCOAmount] = useState('')
+  const [newCODate, setNewCODate] = useState('')
+  const [showCOForm, setShowCOForm] = useState(false)
+  const [addingCO, setAddingCO] = useState(false)
   const [phase, setPhase] = useState('Phase 1')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
-  const [drawerTab, setDrawerTab] = useState<'tasks' | 'photos'>('tasks')
+  const [drawerTab, setDrawerTab] = useState<'tasks' | 'photos' | 'changeorders'>('tasks')
   const [loading, setLoading] = useState(true)
   const [userName, setUserName] = useState('')
 
@@ -85,18 +93,20 @@ export default function UnitsPage() {
   }, [])
 
   async function fetchAll() {
-    const [u, t, i, p, c] = await Promise.all([
+    const [u, t, i, p, c, co] = await Promise.all([
       supabase.from('units').select('*').order('name'),
       supabase.from('tasks').select('*').order('created_at'),
       supabase.from('task_images').select('*').order('created_at'),
       supabase.from('unit_photos').select('*').order('created_at', { ascending: false }),
       supabase.from('unit_costs').select('*').order('created_at'),
+      supabase.from('change_orders').select('*').order('date', { ascending: false }),
     ])
     if (u.data) setUnits(u.data as Unit[])
     if (t.data) setTasks(t.data as Task[])
     if (i.data) setImages(i.data as TaskImage[])
     if (p.data) setUnitPhotos(p.data as UnitPhoto[])
     if (c.data) setUnitCosts(c.data as UnitCost[])
+    if (co.data) setChangeOrders(co.data as ChangeOrder[])
     setLoading(false)
   }
 
@@ -114,6 +124,30 @@ export default function UnitsPage() {
     await supabase.from('units').update({ status }).eq('id', unitId)
     setUnits(prev => prev.map(u => u.id === unitId ? { ...u, status } : u))
     if (selectedUnit?.id === unitId) setSelectedUnit(prev => prev ? { ...prev, status } : prev)
+  }
+
+  async function addChangeOrder() {
+    if (!selectedUnit || !newCOTitle.trim()) return
+    setAddingCO(true)
+    const { data } = await supabase.from('change_orders').insert({
+      unit_id: selectedUnit.id, title: newCOTitle.trim(),
+      description: newCODesc.trim() || null,
+      amount: parseFloat(newCOAmount) || 0,
+      status: 'Pending', date: newCODate || new Date().toISOString().split('T')[0]
+    }).select().single()
+    if (data) setChangeOrders(prev => [data as ChangeOrder, ...prev])
+    setNewCOTitle(''); setNewCODesc(''); setNewCOAmount(''); setNewCODate(''); setShowCOForm(false)
+    setAddingCO(false)
+  }
+
+  async function updateCOStatus(id: number, status: string) {
+    await supabase.from('change_orders').update({ status }).eq('id', id)
+    setChangeOrders(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+  }
+
+  async function deleteCO(id: number) {
+    await supabase.from('change_orders').delete().eq('id', id)
+    setChangeOrders(prev => prev.filter(c => c.id !== id))
   }
 
   async function addCost() {
@@ -514,9 +548,13 @@ export default function UnitsPage() {
 
               {/* Drawer tabs */}
               <div style={{ display: 'flex', marginTop: 14, borderBottom: '1px solid var(--border)', marginLeft: -24, marginRight: -24, paddingLeft: 24 }}>
-                {(['tasks', 'photos'] as const).map(t => (
-                  <button key={t} onClick={() => setDrawerTab(t)} style={{ padding: '8px 16px', border: 'none', background: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer', color: drawerTab === t ? 'var(--text)' : 'var(--gray)', borderBottom: drawerTab === t ? '2px solid var(--red)' : '2px solid transparent', marginBottom: -1, textTransform: 'capitalize' }}>
-                    {t === 'photos' ? `Photos (${selectedUnitPhotos.length})` : `Tasks (${tasks.filter(t2 => t2.unit_id === selectedUnit.id).length})`}
+                {([
+                  { key: 'tasks', label: `Tasks (${tasks.filter(t2 => t2.unit_id === selectedUnit.id).length})` },
+                  { key: 'photos', label: `Photos (${selectedUnitPhotos.length})` },
+                  { key: 'changeorders', label: `Change Orders (${changeOrders.filter(c => c.unit_id === selectedUnit.id).length})` },
+                ] as const).map(t => (
+                  <button key={t.key} onClick={() => setDrawerTab(t.key)} style={{ padding: '8px 14px', border: 'none', background: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer', color: drawerTab === t.key ? 'var(--text)' : 'var(--gray)', borderBottom: drawerTab === t.key ? '2px solid var(--red)' : '2px solid transparent', marginBottom: -1, whiteSpace: 'nowrap' }}>
+                    {t.label}
                   </button>
                 ))}
               </div>
@@ -621,6 +659,70 @@ export default function UnitsPage() {
           </div>
         </div>
       )}
+
+            {/* CHANGE ORDERS TAB */}
+            {drawerTab === 'changeorders' && (
+              <div style={{ padding: '1.25rem 1.5rem', flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Change Orders</div>
+                  <button onClick={() => setShowCOForm((f: boolean) => !f)} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px' }}>
+                    {showCOForm ? 'Cancel' : '+ Add'}
+                  </button>
+                </div>
+                {showCOForm && (
+                  <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 12, marginBottom: 14 }}>
+                    <div style={{ marginBottom: 8 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Title *</label>
+                      <input value={newCOTitle} onChange={e => setNewCOTitle(e.target.value)} placeholder="e.g. Upgraded electrical panel" style={S.input} autoFocus /></div>
+                    <div style={{ marginBottom: 8 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Description</label>
+                      <input value={newCODesc} onChange={e => setNewCODesc(e.target.value)} placeholder="Details..." style={S.input} /></div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                      <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Amount ($)</label>
+                        <div style={{ position: 'relative' }}><span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--gray)' }}>$</span>
+                          <input type="number" value={newCOAmount} onChange={e => setNewCOAmount(e.target.value)} placeholder="0" style={{ ...S.input, paddingLeft: 20 }} /></div></div>
+                      <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Date</label>
+                        <input type="date" value={newCODate} onChange={e => setNewCODate(e.target.value)} style={S.input} /></div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                      <button onClick={() => setShowCOForm(false)} style={{ ...S.btn, fontSize: 12, padding: '5px 10px' }}>Cancel</button>
+                      <button onClick={addChangeOrder} disabled={addingCO || !newCOTitle.trim()} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px', opacity: !newCOTitle.trim() ? 0.5 : 1 }}>Save</button>
+                    </div>
+                  </div>
+                )}
+                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id).length === 0 && !showCOForm ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)', fontSize: 13 }}>No change orders yet.</div>
+                ) : changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id).map((co: ChangeOrder) => {
+                  const SC: Record<string,{bg:string;color:string}> = { Pending:{bg:'#FFFBEB',color:'#92400E'}, Approved:{bg:'#F0FDF4',color:'#166534'}, Rejected:{bg:'#FEF2F2',color:'#991B1B'}, Complete:{bg:'#EFF6FF',color:'#1E40AF'} }
+                  const sc = SC[co.status] || SC.Pending
+                  return (
+                    <div key={co.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{co.title}</div>
+                          {co.description && <div style={{ fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>{co.description}</div>}
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            {co.amount !== 0 && <span style={{ fontSize: 13, fontWeight: 600, color: co.amount > 0 ? '#DC2626' : '#059669' }}>{co.amount > 0 ? '+' : ''}{fmt(co.amount)}</span>}
+                            <span style={{ fontSize: 11, color: 'var(--gray)' }}>{new Date(co.date).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                          <select value={co.status} onChange={e => updateCOStatus(co.id, e.target.value)}
+                            style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--border2)', borderRadius: 6, background: sc.bg, color: sc.color, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                            {['Pending','Approved','Rejected','Complete'].map(s => <option key={s}>{s}</option>)}
+                          </select>
+                          <button onClick={() => deleteCO(co.id)} style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 5, background: 'transparent', color: 'var(--gray)', cursor: 'pointer' }}>x</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id && c.status !== 'Rejected').length > 0 && (
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
+                    <span style={{ color: 'var(--gray)' }}>Total (excl. Rejected)</span>
+                    <span style={{ color: 'var(--text)' }}>{fmt(changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit.id && c.status !== 'Rejected').reduce((s: number, c: ChangeOrder) => s + c.amount, 0))}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
       {/* Lightbox */}
       {expandedImg && (
