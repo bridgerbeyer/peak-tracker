@@ -14,11 +14,19 @@ export default function LoginPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setMode('set-password')
-      if (event === 'SIGNED_IN' && mode !== 'set-password') window.location.href = '/'
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') { setMode('set-password'); return }
+      if (event === 'SIGNED_IN' && session) {
+        // Small delay to allow set-password mode to be set first
+        setTimeout(() => {
+          setMode(current => {
+            if (current !== 'set-password') window.location.href = '/'
+            return current
+          })
+        }, 100)
+      }
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) { setError('Please enter your email and password.'); return }
