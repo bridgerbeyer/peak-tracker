@@ -8,7 +8,7 @@ type Task = { id: number; unit_id: number; title: string; description?: string; 
 type TaskImage = { id: number; task_id: number; image_data: string }
 type UnitPhoto = { id: number; unit_id: number; image_data: string; caption?: string; created_at: string }
 type UnitCost = { id: number; unit_id: number; label: string; amount: number }
-type ChangeOrder = { id: number; unit_id: number; title: string; description?: string; amount: number; status: string; date: string; created_at: string }
+type ChangeOrder = { id: number; unit_id: number; title: string; description?: string; amount: number; status: string; date: string; created_at: string; included_in_price: boolean }
 
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3']
 const STATUSES = ['Available', 'Under Contract', 'Sold']
@@ -133,7 +133,7 @@ export default function UnitsPage() {
       unit_id: selectedUnit.id, title: newCOTitle.trim(),
       description: newCODesc.trim() || null,
       amount: parseFloat(newCOAmount) || 0,
-      status: 'Pending', date: newCODate || new Date().toISOString().split('T')[0]
+      status: 'Pending', date: newCODate || new Date().toISOString().split('T')[0], included_in_price: false
     }).select().single()
     if (data) setChangeOrders(prev => [data as ChangeOrder, ...prev])
     setNewCOTitle(''); setNewCODesc(''); setNewCOAmount(''); setNewCODate(''); setShowCOForm(false)
@@ -143,6 +143,11 @@ export default function UnitsPage() {
   async function updateCOStatus(id: number, status: string) {
     await supabase.from('change_orders').update({ status }).eq('id', id)
     setChangeOrders(prev => prev.map(c => c.id === id ? { ...c, status } : c))
+  }
+
+  async function toggleCOIncluded(id: number, included: boolean) {
+    await supabase.from('change_orders').update({ included_in_price: included }).eq('id', id)
+    setChangeOrders(prev => prev.map(c => c.id === id ? { ...c, included_in_price: included } : c))
   }
 
   async function deleteCO(id: number) {
@@ -662,65 +667,169 @@ export default function UnitsPage() {
 
             {/* CHANGE ORDERS TAB */}
             {drawerTab === 'changeorders' && (
-              <div style={{ padding: '1.25rem 1.5rem', flex: 1 }}>
+              <div style={{ padding: '1.25rem 1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+                {/* Add form toggle */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>Change Orders</div>
                   <button onClick={() => setShowCOForm((f: boolean) => !f)} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px' }}>
-                    {showCOForm ? 'Cancel' : '+ Add'}
+                    {showCOForm ? 'Cancel' : '+ Add line item'}
                   </button>
                 </div>
+
+                {/* Add form */}
                 {showCOForm && (
-                  <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 12, marginBottom: 14 }}>
-                    <div style={{ marginBottom: 8 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Title *</label>
-                      <input value={newCOTitle} onChange={e => setNewCOTitle(e.target.value)} placeholder="e.g. Upgraded electrical panel" style={S.input} autoFocus /></div>
-                    <div style={{ marginBottom: 8 }}><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Description</label>
-                      <input value={newCODesc} onChange={e => setNewCODesc(e.target.value)} placeholder="Details..." style={S.input} /></div>
+                  <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 12, marginBottom: 14, border: '1px solid var(--border)' }}>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Description *</label>
+                      <input value={newCOTitle} onChange={e => setNewCOTitle(e.target.value)} placeholder="e.g. Upgraded electrical panel" style={S.input} autoFocus />
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Notes</label>
+                      <input value={newCODesc} onChange={e => setNewCODesc(e.target.value)} placeholder="Additional details..." style={S.input} />
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-                      <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Amount ($)</label>
-                        <div style={{ position: 'relative' }}><span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--gray)' }}>$</span>
-                          <input type="number" value={newCOAmount} onChange={e => setNewCOAmount(e.target.value)} placeholder="0" style={{ ...S.input, paddingLeft: 20 }} /></div></div>
-                      <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Date</label>
-                        <input type="date" value={newCODate} onChange={e => setNewCODate(e.target.value)} style={S.input} /></div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                      <button onClick={() => setShowCOForm(false)} style={{ ...S.btn, fontSize: 12, padding: '5px 10px' }}>Cancel</button>
-                      <button onClick={addChangeOrder} disabled={addingCO || !newCOTitle.trim()} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px', opacity: !newCOTitle.trim() ? 0.5 : 1 }}>Save</button>
-                    </div>
-                  </div>
-                )}
-                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id).length === 0 && !showCOForm ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--gray)', fontSize: 13 }}>No change orders yet.</div>
-                ) : changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id).map((co: ChangeOrder) => {
-                  const SC: Record<string,{bg:string;color:string}> = { Pending:{bg:'#FFFBEB',color:'#92400E'}, Approved:{bg:'#F0FDF4',color:'#166534'}, Rejected:{bg:'#FEF2F2',color:'#991B1B'}, Complete:{bg:'#EFF6FF',color:'#1E40AF'} }
-                  const sc = SC[co.status] || SC.Pending
-                  return (
-                    <div key={co.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>{co.title}</div>
-                          {co.description && <div style={{ fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>{co.description}</div>}
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            {co.amount !== 0 && <span style={{ fontSize: 13, fontWeight: 600, color: co.amount > 0 ? '#DC2626' : '#059669' }}>{co.amount > 0 ? '+' : ''}{fmt(co.amount)}</span>}
-                            <span style={{ fontSize: 11, color: 'var(--gray)' }}>{new Date(co.date).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                          <select value={co.status} onChange={e => updateCOStatus(co.id, e.target.value)}
-                            style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--border2)', borderRadius: 6, background: sc.bg, color: sc.color, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
-                            {['Pending','Approved','Rejected','Complete'].map(s => <option key={s}>{s}</option>)}
-                          </select>
-                          <button onClick={() => deleteCO(co.id)} style={{ fontSize: 11, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 5, background: 'transparent', color: 'var(--gray)', cursor: 'pointer' }}>x</button>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Amount ($)</label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--gray)' }}>$</span>
+                          <input type="number" value={newCOAmount} onChange={e => setNewCOAmount(e.target.value)} onKeyDown={e => e.key === 'Enter' && addChangeOrder()} placeholder="0" style={{ ...S.input, paddingLeft: 20 }} />
                         </div>
                       </div>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 3 }}>Date</label>
+                        <input type="date" value={newCODate} onChange={e => setNewCODate(e.target.value)} style={S.input} />
+                      </div>
                     </div>
-                  )
-                })}
-                {changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id && c.status !== 'Rejected').length > 0 && (
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
-                    <span style={{ color: 'var(--gray)' }}>Total (excl. Rejected)</span>
-                    <span style={{ color: 'var(--text)' }}>{fmt(changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id && c.status !== 'Rejected').reduce((s: number, c: ChangeOrder) => s + c.amount, 0))}</span>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                      <button onClick={() => { setShowCOForm(false); setNewCOTitle(''); setNewCODesc(''); setNewCOAmount(''); setNewCODate('') }} style={{ ...S.btn, fontSize: 12, padding: '5px 10px' }}>Cancel</button>
+                      <button onClick={addChangeOrder} disabled={addingCO || !newCOTitle.trim()} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 12px', opacity: !newCOTitle.trim() ? 0.5 : 1 }}>Add</button>
+                    </div>
                   </div>
                 )}
+
+                {/* Line items */}
+                {(() => {
+                  const unitCOs = changeOrders.filter((c: ChangeOrder) => c.unit_id === selectedUnit!.id)
+                  const activeCOs = unitCOs.filter((c: ChangeOrder) => c.status !== 'Rejected')
+                  const total = activeCOs.reduce((s: number, c: ChangeOrder) => s + c.amount, 0)
+                  const includedTotal = activeCOs.filter((c: ChangeOrder) => c.included_in_price).reduce((s: number, c: ChangeOrder) => s + c.amount, 0)
+                  const addOnTotal = activeCOs.filter((c: ChangeOrder) => !c.included_in_price).reduce((s: number, c: ChangeOrder) => s + c.amount, 0)
+                  const basePrice = parseFloat((editPrice || '0').replace(/,/g, ''))
+                  const finalPrice = basePrice + addOnTotal
+
+                  if (unitCOs.length === 0 && !showCOForm) return (
+                    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--gray)', fontSize: 13 }}>
+                      No change orders yet.<br />
+                      <span style={{ fontSize: 12 }}>Add line items for any scope changes or upgrades.</span>
+                    </div>
+                  )
+
+                  return (
+                    <>
+                      {/* Items list */}
+                      {unitCOs.length > 0 && (
+                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+                          {unitCOs.map((co: ChangeOrder, idx: number) => {
+                            const SC: Record<string,{bg:string;color:string}> = {
+                              Pending: {bg:'rgba(234,179,8,0.1)',color:'#92400E'},
+                              Approved: {bg:'rgba(34,197,94,0.1)',color:'#166534'},
+                              Rejected: {bg:'rgba(239,68,68,0.1)',color:'#991B1B'},
+                              Complete: {bg:'rgba(59,130,246,0.1)',color:'#1E40AF'}
+                            }
+                            const sc = SC[co.status] || SC.Pending
+                            const isRejected = co.status === 'Rejected'
+                            return (
+                              <div key={co.id} style={{ padding: '11px 14px', borderBottom: idx < unitCOs.length - 1 ? '1px solid var(--border)' : 'none', opacity: isRejected ? 0.5 : 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{co.title}</span>
+                                      {co.amount !== 0 && (
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: co.amount > 0 ? '#DC2626' : '#059669', marginLeft: 'auto' }}>
+                                          {co.amount > 0 ? '+' : ''}{fmt(co.amount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {co.description && <div style={{ fontSize: 11, color: 'var(--gray)', marginBottom: 4 }}>{co.description}</div>}
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                      <span style={{ fontSize: 10, color: 'var(--gray)' }}>{new Date(co.date).toLocaleDateString()}</span>
+                                      <select value={co.status} onChange={e => updateCOStatus(co.id, e.target.value)}
+                                        style={{ fontSize: 10, padding: '2px 5px', border: `1px solid var(--border)`, borderRadius: 5, background: sc.bg, color: sc.color, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                                        {['Pending','Approved','Rejected','Complete'].map(s => <option key={s}>{s}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <button onClick={() => deleteCO(co.id)} style={{ fontSize: 11, padding: '2px 5px', border: '1px solid var(--border)', borderRadius: 4, background: 'transparent', color: 'var(--gray)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Total + include toggle */}
+                      {activeCOs.length > 0 && (
+                        <div style={{ background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border)', padding: '14px 16px' }}>
+                          {/* Subtotal */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 12 }}>
+                            <span style={{ color: 'var(--gray)' }}>Total change orders</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text)' }}>{fmt(total)}</span>
+                          </div>
+
+                          {/* Per-item include toggle */}
+                          <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', letterSpacing: '0.07em', color: 'var(--gray)', marginBottom: 8 }}>PRICING TREATMENT</div>
+                          {activeCOs.map((co: ChangeOrder) => (
+                            <div key={co.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <span style={{ fontSize: 12, color: 'var(--text2)', flex: 1, marginRight: 8 }} title={co.title}>{co.title.length > 28 ? co.title.slice(0,28)+'…' : co.title} <span style={{ color: 'var(--gray)' }}>({fmt(co.amount)})</span></span>
+                              <div style={{ display: 'flex', background: 'var(--surface2)', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 }}>
+                                {[
+                                  { label: 'Included', val: true },
+                                  { label: 'Add-on', val: false },
+                                ].map(opt => (
+                                  <button key={opt.label} onClick={() => toggleCOIncluded(co.id, opt.val)}
+                                    style={{ padding: '3px 9px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif',
+                                      background: co.included_in_price === opt.val ? (opt.val ? '#059669' : '#CC2222') : 'transparent',
+                                      color: co.included_in_price === opt.val ? '#fff' : 'var(--gray)',
+                                      transition: 'all 0.15s'
+                                    }}>
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Final calculation */}
+                          {basePrice > 0 && (
+                            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
+                                <span>Base price</span>
+                                <span>{fmt(basePrice)}</span>
+                              </div>
+                              {includedTotal > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--gray)', marginBottom: 4 }}>
+                                  <span>Included in price</span>
+                                  <span style={{ color: 'var(--gray)' }}>—</span>
+                                </div>
+                              )}
+                              {addOnTotal > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#DC2626', marginBottom: 4 }}>
+                                  <span>Add-ons</span>
+                                  <span>+ {fmt(addOnTotal)}</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--border2)' }}>
+                                <span style={{ color: 'var(--text)' }}>Final price</span>
+                                <span style={{ color: addOnTotal > 0 ? '#CC2222' : '#059669' }}>{fmt(finalPrice)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
 
