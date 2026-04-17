@@ -299,9 +299,7 @@ export default function Home() {
 
   function handlePhotos(e: React.ChangeEvent<HTMLInputElement>) {
     Array.from(e.target.files || []).forEach(f => {
-      const r = new FileReader()
-      r.onload = ev => setPhotos(prev => [...prev, ev.target?.result as string])
-      r.readAsDataURL(f)
+      compressImage(f).then(data => setPhotos(prev => [...prev, data]))
     })
   }
 
@@ -450,14 +448,31 @@ export default function Home() {
     setTaskImages(prev => prev.filter(i => i.task_id !== taskId))
   }
 
+  function compressImage(file: File, maxPx = 1200, quality = 0.72): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onerror = reject
+      reader.onload = ev => {
+        const img = new Image()
+        img.onerror = reject
+        img.onload = () => {
+          const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.round(img.width * scale)
+          canvas.height = Math.round(img.height * scale)
+          canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+          resolve(canvas.toDataURL('image/jpeg', quality))
+        }
+        img.src = ev.target?.result as string
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
   async function uploadTaskImage(taskId: number, file: File) {
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const imageData = ev.target?.result as string
-      const { data } = await supabase.from('task_images').insert({ task_id: taskId, image_data: imageData }).select().single()
-      if (data) setTaskImages(prev => [...prev, data as TaskImage])
-    }
-    reader.readAsDataURL(file)
+    const imageData = await compressImage(file)
+    const { data } = await supabase.from('task_images').insert({ task_id: taskId, image_data: imageData }).select().single()
+    if (data) setTaskImages(prev => [...prev, data as TaskImage])
   }
 
   async function deleteTaskImage(imageId: number) {
@@ -467,13 +482,9 @@ export default function Home() {
 
   async function uploadUnitPhoto(file: File, caption?: string) {
     if (!selectedUnit) return
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const imageData = ev.target?.result as string
-      const { data } = await supabase.from('unit_photos').insert({ unit_id: selectedUnit.id, image_data: imageData, caption: caption?.trim() || null }).select().single()
-      if (data) setUnitPhotos(prev => [data as UnitPhoto, ...prev])
-    }
-    reader.readAsDataURL(file)
+    const imageData = await compressImage(file)
+    const { data } = await supabase.from('unit_photos').insert({ unit_id: selectedUnit.id, image_data: imageData, caption: caption?.trim() || null }).select().single()
+    if (data) setUnitPhotos(prev => [data as UnitPhoto, ...prev])
   }
 
   async function deleteUnitPhoto(photoId: number) {
