@@ -25,7 +25,7 @@ Respond with ONLY the recommendation. No preamble, no labels.`
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-5',
         max_tokens: 200,
         messages: [{ role: 'user', content: prompt }],
       }),
