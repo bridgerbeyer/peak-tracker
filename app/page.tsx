@@ -198,6 +198,7 @@ export default function Home() {
   const [description, setDescription] = useState('')
   const [photos, setPhotos] = useState<string[]>([])
   const [title, setTitle] = useState('')
+  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [filterTrade, setFilterTrade] = useState('')
@@ -1112,59 +1113,106 @@ ${Object.entries(grps).map(([trade,items])=>`
               </div>
             )}
 
-            {/* Entries */}
+            {/* Spreadsheet table */}
             {filtered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray)', fontSize: 14 }}>
                 No improvements logged yet. Hit "+ Log improvement" to get started.
               </div>
-            ) : Object.entries(tradeGroups).map(([phaseName, items]) => (
-              <div key={phaseName} style={{ marginBottom: 28 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: BUILD_PHASE_COLORS[phaseName] || '#6B7280' }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{phaseName}</div>
-                  <div style={{ fontSize: 12, color: 'var(--gray)' }}>({items.length})</div>
+            ) : (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                {/* Table header */}
+                <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 2fr 90px 90px 22px', gap: 0, padding: '8px 14px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  {['#', 'Title / Unit', 'Description', 'Project', 'Date', ''].map((h, i) => (
+                    <div key={i} style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray)', letterSpacing: '0.06em', textTransform: 'uppercase', paddingRight: 8 }}>{h}</div>
+                  ))}
                 </div>
-                {items.map(entry => (
-                  <div key={entry.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 14, marginLeft: 18 }}>
-                    {/* Photos — large, top, clickable */}
-                    {entry.photos?.length > 0 && (
-                      <div style={{ display: 'grid', gridTemplateColumns: entry.photos.length === 1 ? '1fr' : entry.photos.length === 2 ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 2 }}>
-                        {entry.photos.map((p, i) => (
-                          <div key={i} onClick={() => setExpandedImg(p)}
-                            style={{ position: 'relative', paddingBottom: entry.photos.length === 1 ? '50%' : '65%', overflow: 'hidden', cursor: 'zoom-in', background: '#000' }}>
-                            <img src={p} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.2s' }}
-                              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.03)')}
-                              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} />
-                            <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.55)', borderRadius: 6, padding: '3px 7px', fontSize: 11, color: '#fff' }}>🔍</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {/* Text content */}
-                    <div style={{ padding: '14px 18px' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
-                        <div>
-                          {entry.unit && <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3, color: 'var(--text)' }}>{entry.unit}</div>}
-                          <div style={{ fontSize: 12, color: 'var(--gray)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            <span style={{ background: 'var(--red-dim)', color: 'var(--red)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{entry.area}</span>
-                            <span>{new Date(entry.created_at).toLocaleDateString()}</span>
-                            {entry.logged_by && <span>· {entry.logged_by}</span>}
-                          </div>
-                        </div>
-                        <button onClick={() => deleteEntry(entry.id)} style={{ fontSize: 11, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'transparent', color: 'var(--gray)', cursor: 'pointer', flexShrink: 0 }}>Remove</button>
-                      </div>
-                      <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.65, marginBottom: entry.ai_insight ? 12 : 0 }}>{entry.description}</div>
-                      {entry.ai_insight && (
-                        <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, borderLeft: '3px solid var(--red)', marginTop: 10 }}>
-                          <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: 'var(--gray)', marginBottom: 4 }}>AI SPEC NOTE</div>
-                          {entry.ai_insight}
-                        </div>
-                      )}
+
+                {Object.entries(tradeGroups).map(([phaseName, items], gi) => (
+                  <div key={phaseName}>
+                    {/* Phase group header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--bg)', borderTop: gi > 0 ? '1px solid var(--border)' : undefined, borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: BUILD_PHASE_COLORS[phaseName] || '#6B7280', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{phaseName}</span>
+                      <span style={{ fontSize: 11, color: 'var(--gray)' }}>{items.length} item{items.length !== 1 ? 's' : ''}</span>
                     </div>
+
+                    {/* Rows */}
+                    {items.map((entry, idx) => (
+                      <div key={entry.id} onClick={() => setSelectedEntry(entry)}
+                        style={{ display: 'grid', gridTemplateColumns: '28px 1fr 2fr 90px 90px 22px', gap: 0, padding: '9px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <div style={{ fontSize: 12, color: 'var(--gray)', paddingTop: 1 }}>{idx + 1}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: entry.unit ? 500 : 400, paddingRight: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                          {entry.unit || <span style={{ color: 'var(--gray)', fontStyle: 'italic' }}>—</span>}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text2)', paddingRight: 12, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                          {entry.description}
+                        </div>
+                        <div style={{ fontSize: 12 }}>
+                          <span style={{ background: 'var(--red-dim)', color: 'var(--red)', padding: '2px 7px', borderRadius: 99, fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap' }}>{entry.area}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--gray)', whiteSpace: 'nowrap' }}>
+                          {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          {entry.ai_insight && <div title="Has AI insight" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--red)' }} />}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
-            ))}
+            )}
+
+            {/* Entry detail popup */}
+            {selectedEntry && (
+              <div onClick={() => setSelectedEntry(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', width: '100%', maxWidth: 520, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }}>
+                  {/* Popup header */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: BUILD_PHASE_COLORS[selectedEntry.category] || '#6B7280', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: 'var(--gray)', fontWeight: 500 }}>{selectedEntry.category}</span>
+                      </div>
+                      {selectedEntry.unit && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{selectedEntry.unit}</div>}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ background: 'var(--red-dim)', color: 'var(--red)', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 500 }}>{selectedEntry.area}</span>
+                        <span style={{ fontSize: 12, color: 'var(--gray)' }}>{new Date(selectedEntry.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        {selectedEntry.logged_by && <span style={{ fontSize: 12, color: 'var(--gray)' }}>· {selectedEntry.logged_by}</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => setSelectedEntry(null)} style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--gray)', cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}>×</button>
+                  </div>
+
+                  {/* Description */}
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: selectedEntry.ai_insight ? '1px solid var(--border)' : undefined }}>
+                    <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.7 }}>{selectedEntry.description}</div>
+                  </div>
+
+                  {/* AI insight */}
+                  {selectedEntry.ai_insight && (
+                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', letterSpacing: '0.08em', color: 'var(--gray)', marginBottom: 6, textTransform: 'uppercase' }}>AI Spec Note</div>
+                      <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, borderLeft: '3px solid var(--red)', paddingLeft: 12 }}>{selectedEntry.ai_insight}</div>
+                    </div>
+                  )}
+
+                  {/* Footer actions */}
+                  <div style={{ padding: '0.875rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <button onClick={() => { deleteEntry(selectedEntry.id); setSelectedEntry(null) }}
+                      style={{ fontSize: 13, color: '#DC2626', background: 'none', border: '1px solid #DC262640', borderRadius: 7, padding: '6px 14px', cursor: 'pointer' }}>
+                      Delete entry
+                    </button>
+                    <button onClick={() => setSelectedEntry(null)}
+                      style={{ fontSize: 13, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', color: 'var(--text)' }}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Lightbox */}
             {expandedImg && (
