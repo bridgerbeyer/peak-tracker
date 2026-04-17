@@ -11,9 +11,13 @@ function esc(s: unknown): string {
 }
 
 const TRADE_COLORS: Record<string, string> = {
-  Framing: '#D97706', Electrical: '#2563EB', Plumbing: '#059669',
-  HVAC: '#DB2777', 'Fire Sprinkler': '#DC2626', Drywall: '#7C3AED',
-  Concrete: '#6B7280', Finishing: '#0891B2', Other: '#92400E',
+  'Sitework & Foundation':    '#92400E',
+  'Structural & Framing':     '#D97706',
+  'Rough-ins':                '#2563EB',
+  'Pre-drywall Checkpoint':   '#EA580C',
+  'Finishes':                 '#0891B2',
+  'Mechanical Systems':       '#7C3AED',
+  'Site Finishes & Closeout': '#059669',
 }
 
 type Entry = {

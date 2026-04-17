@@ -3,7 +3,26 @@ import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const TRADES = ['Framing', 'Electrical', 'Plumbing', 'HVAC', 'Fire Sprinkler', 'Drywall', 'Concrete', 'Finishing', 'Other']
+const BUILD_PHASES = [
+  'Sitework & Foundation',
+  'Structural & Framing',
+  'Rough-ins',
+  'Pre-drywall Checkpoint',
+  'Finishes',
+  'Mechanical Systems',
+  'Site Finishes & Closeout',
+]
 const PHASES = ['Phase 1', 'Phase 2', 'Phase 3']
+const BUILD_PHASE_COLORS: Record<string, string> = {
+  'Sitework & Foundation':    '#92400E',
+  'Structural & Framing':     '#D97706',
+  'Rough-ins':                '#2563EB',
+  'Pre-drywall Checkpoint':   '#EA580C',
+  'Finishes':                 '#0891B2',
+  'Mechanical Systems':       '#7C3AED',
+  'Site Finishes & Closeout': '#059669',
+}
+// Keep TRADE_COLORS for the Plans extraction display
 const TRADE_COLORS: Record<string, string> = {
   Framing: '#D97706', Electrical: '#2563EB', Plumbing: '#059669',
   HVAC: '#DB2777', 'Fire Sprinkler': '#DC2626', Drywall: '#7C3AED',
@@ -572,7 +591,7 @@ export default function Home() {
   }
 
   const filtered = entries.filter(e => (!filterTrade || e.category === filterTrade) && (!filterPhase || e.area === filterPhase))
-  const tradeGroups = TRADES.reduce((acc, t) => { const items = filtered.filter(e => e.category === t); if (items.length) acc[t] = items; return acc }, {} as Record<string, Entry[]>)
+  const tradeGroups = BUILD_PHASES.reduce((acc, p) => { const items = filtered.filter(e => e.category === p); if (items.length) acc[p] = items; return acc }, {} as Record<string, Entry[]>)
   const allExtracted = plans.flatMap(p => (p.extracted_items || []).map(i => ({ ...i, planName: p.name, phase: p.phase })))
   const extractedByTrade = TRADES.reduce((acc, t) => { const items = allExtracted.filter(i => i.trade === t); if (items.length) acc[t] = items; return acc }, {} as Record<string, typeof allExtracted>)
 
@@ -636,11 +655,11 @@ export default function Home() {
 
   function exportPDF() {
     setExporting(true)
-    const TCOLORS: Record<string,string> = { Framing:'#D97706',Electrical:'#2563EB',Plumbing:'#059669',HVAC:'#DB2777','Fire Sprinkler':'#DC2626',Drywall:'#7C3AED',Concrete:'#6B7280',Finishing:'#0891B2',Other:'#92400E' }
+    const TCOLORS: Record<string,string> = { 'Sitework & Foundation':'#92400E','Structural & Framing':'#D97706','Rough-ins':'#2563EB','Pre-drywall Checkpoint':'#EA580C','Finishes':'#0891B2','Mechanical Systems':'#7C3AED','Site Finishes & Closeout':'#059669' }
     const date = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
     const fil = entries.filter((e:any)=>(!filterTrade||e.category===filterTrade)&&(!filterPhase||e.area===filterPhase))
     const grps: Record<string,any[]> = {}
-    fil.forEach((e:any)=>{ if(!grps[e.category]) grps[e.category]=[]; grps[e.category].push(e) })
+    BUILD_PHASES.forEach(p => { const items = fil.filter((e:any) => e.category === p); if (items.length) grps[p] = items })
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Build Playbook</title><style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -677,9 +696,9 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;background:#fff
 <div class="hdr"><div><h1>Build Playbook</h1><p>Peak Condo Storage &mdash; Construction Knowledge Base</p></div><div class="hdr-r"><div class="d">${date}</div>${userName?`<div style="margin-top:3px">Prepared by ${userName}</div>`:''}</div></div>
 <div class="chips">
   <div class="chip">Improvements: <b>${fil.length}</b></div>
-  ${filterTrade?`<div class="chip">Trade: <b>${filterTrade}</b></div>`:''}
-  ${filterPhase?`<div class="chip">Phase: <b>${filterPhase}</b></div>`:''}
-  <div class="chip">Trades: <b>${Object.keys(grps).length}</b></div>
+  ${filterTrade?`<div class="chip">Phase: <b>${filterTrade}</b></div>`:''}
+  ${filterPhase?`<div class="chip">Project phase: <b>${filterPhase}</b></div>`:''}
+  <div class="chip">Phases: <b>${Object.keys(grps).length}</b></div>
 </div>
 ${Object.entries(grps).map(([trade,items])=>`
 <div class="trade">
@@ -875,7 +894,7 @@ ${Object.entries(grps).map(([trade,items])=>`
                   {[
                     { label: 'Lessons logged', value: entries.length, action: () => { setTab('library'); setShowLogForm(true) } },
                     { label: 'Plans uploaded', value: plans.length, action: () => setTab('plans') },
-                    { label: 'Trades covered', value: Object.keys(tradeGroups).length, action: () => setTab('library') },
+                    { label: 'Phases covered', value: Object.keys(tradeGroups).length, action: () => setTab('library') },
                     { label: 'Spec items', value: allExtracted.length, action: () => setTab('plans') },
                   ].map(m => (
                     <div key={m.label} onClick={m.action} style={{ background: 'var(--bg)', borderRadius: 8, padding: '10px 12px', cursor: 'pointer' }}>
@@ -928,7 +947,7 @@ ${Object.entries(grps).map(([trade,items])=>`
                 </div>
                 {recentLessons.map(e => (
                   <div key={e.id} style={{ padding: '10px 0', borderBottom: '1px solid #F5F3EE', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: TRADE_COLORS[e.category] || '#6B7280', flexShrink: 0, marginTop: 5 }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: BUILD_PHASE_COLORS[e.category] || '#6B7280', flexShrink: 0, marginTop: 5 }} />
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{e.unit || e.category}</div>
                       <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 1 }}>{e.description.slice(0, 100)}{e.description.length > 100 ? '...' : ''}</div>
@@ -1042,8 +1061,8 @@ ${Object.entries(grps).map(([trade,items])=>`
             {/* Filter bar + add button */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select value={filterTrade} onChange={e => setFilterTrade(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All trades</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select>
-                <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
+                <select value={filterTrade} onChange={e => setFilterTrade(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All phases</option>{BUILD_PHASES.map(p => <option key={p}>{p}</option>)}</select>
+                <select value={filterPhase} onChange={e => setFilterPhase(e.target.value)} style={{ ...S.input, width: 'auto' }}><option value="">All project phases</option>{PHASES.map(p => <option key={p}>{p}</option>)}</select>
                 <span style={{ fontSize: 13, color: 'var(--gray)' }}>{filtered.length} improvement{filtered.length !== 1 ? 's' : ''}</span>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -1064,9 +1083,9 @@ ${Object.entries(grps).map(([trade,items])=>`
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '1.25rem', marginBottom: 24 }}>
                 <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 14, color: 'var(--text)' }}>New improvement</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                  <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Trade *</label>
-                    <select value={trade} onChange={e => setTrade(e.target.value)} style={S.input}><option value="">Select...</option>{TRADES.map(t => <option key={t}>{t}</option>)}</select></div>
-                  <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Phase</label>
+                  <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Construction phase *</label>
+                    <select value={trade} onChange={e => setTrade(e.target.value)} style={S.input}><option value="">Select phase...</option>{BUILD_PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
+                  <div><label style={{ fontSize: 12, color: 'var(--gray)', display: 'block', marginBottom: 4 }}>Project phase</label>
                     <select value={phase} onChange={e => setPhase(e.target.value)} style={S.input}>{PHASES.map(p => <option key={p}>{p}</option>)}</select></div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
@@ -1098,11 +1117,11 @@ ${Object.entries(grps).map(([trade,items])=>`
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray)', fontSize: 14 }}>
                 No improvements logged yet. Hit "+ Log improvement" to get started.
               </div>
-            ) : Object.entries(tradeGroups).map(([tradeName, items]) => (
-              <div key={tradeName} style={{ marginBottom: 28 }}>
+            ) : Object.entries(tradeGroups).map(([phaseName, items]) => (
+              <div key={phaseName} style={{ marginBottom: 28 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: TRADE_COLORS[tradeName] || '#6B7280' }} />
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{tradeName}</div>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: BUILD_PHASE_COLORS[phaseName] || '#6B7280' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{phaseName}</div>
                   <div style={{ fontSize: 12, color: 'var(--gray)' }}>({items.length})</div>
                 </div>
                 {items.map(entry => (
@@ -1633,7 +1652,7 @@ ${Object.entries(grps).map(([trade,items])=>`
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Send Playbook to GC</div>
                     <div style={{ fontSize: 12, color: 'var(--gray)', marginTop: 3 }}>
-                      {filtered.length} item{filtered.length !== 1 ? 's' : ''}{filterPhase ? ` · ${filterPhase}` : ''}{filterTrade ? ` · ${filterTrade}` : ''}
+                      {filtered.length} item{filtered.length !== 1 ? 's' : ''}{filterTrade ? ` · ${filterTrade}` : ''}{filterPhase ? ` · ${filterPhase}` : ''}
                     </div>
                   </div>
                   <button onClick={() => setShowEmailModal(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--gray)', lineHeight: 1 }}>×</button>
