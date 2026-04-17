@@ -233,7 +233,7 @@ export default function Home() {
   const [unitCosts, setUnitCosts] = useState<UnitCost[]>([])
   const [changeOrders, setChangeOrders] = useState<ChangeOrder[]>([])
   const [unitPhase, setUnitPhase] = useState('Phase 1')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('active')
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
   const [drawerTab, setDrawerTab] = useState<'tasks' | 'photos' | 'changeorders'>('tasks')
   const [showAddUnit, setShowAddUnit] = useState(false)
@@ -1257,7 +1257,7 @@ ${Object.entries(grps).map(([trade,items])=>`
 
         {/* UNITS TAB */}
         {tab === 'units' && (() => {
-          const filteredUnits = units.filter(u => u.phase === unitPhase && (statusFilter === 'all' || u.status === statusFilter))
+          const filteredUnits = units.filter(u => u.phase === unitPhase && (statusFilter === 'active' ? u.status !== 'Sold' : u.status === statusFilter))
           const counts = STATUSES.reduce((acc, s) => { acc[s] = units.filter(u => u.phase === unitPhase && u.status === s).length; return acc }, {} as Record<string, number>)
           const selectedUnitPhotos = selectedUnit ? unitPhotos.filter(p => p.unit_id === selectedUnit.id) : []
           return (
@@ -1271,11 +1271,23 @@ ${Object.entries(grps).map(([trade,items])=>`
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 6, padding: '8px 0' }}>
-                    {['all', ...STATUSES].map(s => (
-                      <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '5px 12px', borderRadius: 99, border: '1px solid', fontSize: 12, cursor: 'pointer', borderColor: statusFilter === s ? '#2B4D3F' : 'var(--border)', background: statusFilter === s ? '#E8F0EC' : 'transparent', color: statusFilter === s ? '#2B4D3F' : 'var(--gray)', fontWeight: statusFilter === s ? 500 : 400 }}>
-                        {s === 'all' ? `All (${units.filter(u => u.phase === unitPhase).length})` : `${s} (${counts[s] || 0})`}
-                      </button>
-                    ))}
+                    {(['active', 'Available', 'Under Contract', 'Sold'] as const).map(s => {
+                      const isActive = statusFilter === s
+                      const activeCount = units.filter(u => u.phase === unitPhase && u.status !== 'Sold').length
+                      const label = s === 'active'
+                        ? `Active (${activeCount})`
+                        : `${s} (${counts[s] || 0})`
+                      const soldStyle = s === 'Sold' && isActive
+                        ? { borderColor: '#1E40AF', background: '#EFF6FF', color: '#1E40AF' }
+                        : s === 'Sold'
+                        ? { borderColor: 'var(--border)', background: 'transparent', color: 'var(--gray)' }
+                        : {}
+                      return (
+                        <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '5px 12px', borderRadius: 99, border: '1px solid', fontSize: 12, cursor: 'pointer', borderColor: isActive ? '#2B4D3F' : 'var(--border)', background: isActive ? '#E8F0EC' : 'transparent', color: isActive ? '#2B4D3F' : 'var(--gray)', fontWeight: isActive ? 500 : 400, ...soldStyle }}>
+                          {label}
+                        </button>
+                      )
+                    })}
                     <button onClick={() => setShowAddUnit(true)} style={{ ...S.btnPrimary, fontSize: 12, padding: '5px 14px' }}>+ Add unit</button>
                   </div>
                 </div>
