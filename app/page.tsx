@@ -80,95 +80,201 @@ function SalesChart({ units }: { units: any[] }) {
   })
 
   const maxVal = Math.max(...data.map(d => Math.max(d.sold, d.contract)), 1)
-  const H = 180
-  const W_STEP = 100 / months.length
   const fmt2 = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(1)}M` : n >= 1000 ? `$${Math.round(n/1000)}K` : `$${n}`
 
-  const toY = (val: number) => H - (val / maxVal) * H
+  // Chart dimensions in SVG user units
+  const SVG_W = 600
+  const SVG_H = 200
+  const PAD_L = 52
+  const PAD_R = 12
+  const PAD_T = 12
+  const PAD_B = 28
+  const CW = SVG_W - PAD_L - PAD_R  // chart width
+  const CH = SVG_H - PAD_T - PAD_B  // chart height
 
-  const soldPath = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * 100
-    const y = toY(d.sold)
-    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
-  }).join(' ')
+  const xOf = (i: number) => PAD_L + (i / (data.length - 1)) * CW
+  const yOf = (val: number) => PAD_T + CH - (val / maxVal) * CH
 
-  const contractPath = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * 100
-    const y = toY(d.contract)
-    return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
-  }).join(' ')
+  // Smooth cubic bezier path
+  function smoothPath(pts: [number, number][]) {
+    if (pts.length < 2) return ''
+    let d = `M ${pts[0][0]} ${pts[0][1]}`
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1]
+      const [x1, y1] = pts[i]
+      const cx = (x0 + x1) / 2
+      d += ` C ${cx} ${y0}, ${cx} ${y1}, ${x1} ${y1}`
+    }
+    return d
+  }
 
-  const [tooltip, setTooltip] = React.useState<{x: number; y: number; d: typeof data[0]} | null>(null)
+  const soldPts: [number, number][]     = data.map((d, i) => [xOf(i), yOf(d.sold)])
+  const contractPts: [number, number][] = data.map((d, i) => [xOf(i), yOf(d.contract)])
+
+  const soldLinePath     = smoothPath(soldPts)
+  const contractLinePath = smoothPath(contractPts)
+
+  // Area fill: close path to bottom of chart
+  const areaClose = ` L ${PAD_L + CW} ${PAD_T + CH} L ${PAD_L} ${PAD_T + CH} Z`
+  const soldAreaPath     = soldLinePath + areaClose
+  const contractAreaPath = contractLinePath + areaClose
+
+  const [tooltip, setTooltip] = React.useState<{ i: number; d: typeof data[0] } | null>(null)
+  const svgRef = React.useRef<SVGSVGElement>(null)
+
+  const TICKS = [0, 0.25, 0.5, 0.75, 1]
 
   return (
     <div style={{ position: 'relative', userSelect: 'none' }}>
+
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 20, marginBottom: 14, alignItems: 'center' }}>
         {[
-          { label: 'Closings (Sold)', color: '#059669' },
-          { label: 'Under Contract', color: '#D97706' },
+          { label: 'Closings', color: '#059669' },
+          { label: 'Under Contract', color: '#D97706', dashed: true },
         ].map(l => (
-          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--gray)' }}>
-            <div style={{ width: 24, height: 3, background: l.color, borderRadius: 2 }} />
+          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 500, color: 'var(--gray)', letterSpacing: '0.02em' }}>
+            <svg width="22" height="10" style={{ flexShrink: 0 }}>
+              <line x1="0" y1="5" x2="22" y2="5" stroke={l.color} strokeWidth="2" strokeDasharray={l.dashed ? '4 2' : undefined} strokeLinecap="round" />
+              {!l.dashed && <circle cx="11" cy="5" r="3" fill={l.color} />}
+            </svg>
             {l.label}
           </div>
         ))}
       </div>
 
-      {/* Chart area */}
-      <div style={{ position: 'relative', height: H + 32 }}>
-        {/* Y axis labels */}
-        {[0, 0.25, 0.5, 0.75, 1].map(pct => (
-          <div key={pct} style={{ position: 'absolute', right: 'calc(100% - 36px)', top: H * (1 - pct) - 8, fontSize: 10, color: 'var(--gray)', whiteSpace: 'nowrap', textAlign: 'right', width: 34 }}>
-            {pct === 0 ? '$0' : fmt2(maxVal * pct)}
-          </div>
-        ))}
+      {/* SVG chart */}
+      <div style={{ position: 'relative' }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+          style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          <defs>
+            <linearGradient id="grad-sold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#059669" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#059669" stopOpacity="0.01" />
+            </linearGradient>
+            <linearGradient id="grad-contract" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#D97706" stopOpacity="0.14" />
+              <stop offset="100%" stopColor="#D97706" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
 
-        {/* Grid lines */}
-        <svg style={{ position: 'absolute', left: 40, right: 0, top: 0, height: H, width: 'calc(100% - 40px)', overflow: 'visible' }} viewBox={`0 0 100 ${H}`} preserveAspectRatio="none">
-          {[0, 0.25, 0.5, 0.75, 1].map(pct => (
-            <line key={pct} x1="0" y1={H * (1 - pct)} x2="100" y2={H * (1 - pct)} stroke="var(--border)" strokeWidth="0.4" vectorEffect="non-scaling-stroke" />
+          {/* Horizontal grid lines + Y-axis labels */}
+          {TICKS.map(pct => {
+            const y = PAD_T + CH * (1 - pct)
+            return (
+              <g key={pct}>
+                <line x1={PAD_L} y1={y} x2={PAD_L + CW} y2={y}
+                  stroke="var(--border)" strokeWidth="0.5" strokeDasharray={pct === 0 ? undefined : '3 3'} />
+                <text x={PAD_L - 6} y={y + 4} textAnchor="end"
+                  fontSize="9" fill="var(--gray)" fontFamily="inherit" letterSpacing="0.03em">
+                  {pct === 0 ? '$0' : fmt2(maxVal * pct)}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* Area fills */}
+          {maxVal > 1 && (
+            <>
+              <path d={contractAreaPath} fill="url(#grad-contract)" />
+              <path d={soldAreaPath}     fill="url(#grad-sold)" />
+            </>
+          )}
+
+          {/* Lines */}
+          {maxVal > 1 && (
+            <>
+              <path d={contractLinePath} fill="none" stroke="#D97706" strokeWidth="1.75"
+                strokeDasharray="5 3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={soldLinePath} fill="none" stroke="#059669" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" />
+            </>
+          )}
+
+          {/* Data point dots */}
+          {maxVal > 1 && data.map((d, i) => (
+            <g key={i}>
+              {d.sold > 0 && (
+                <circle cx={xOf(i)} cy={yOf(d.sold)} r="4" fill="#059669" stroke="white" strokeWidth="1.5" />
+              )}
+              {d.contract > 0 && (
+                <circle cx={xOf(i)} cy={yOf(d.contract)} r="3.5" fill="#D97706" stroke="white" strokeWidth="1.5" />
+              )}
+            </g>
           ))}
-          {/* Under Contract line */}
-          {maxVal > 1 && <polyline points={data.map((d, i) => `${(i/(data.length-1))*100},${toY(d.contract)}`).join(' ')} fill="none" stroke="#D97706" strokeWidth="1.5" strokeLinejoin="round" vectorEffect="non-scaling-stroke" strokeDasharray="4 2" />}
-          {/* Sold line */}
-          {maxVal > 1 && <polyline points={data.map((d, i) => `${(i/(data.length-1))*100},${toY(d.sold)}`).join(' ')} fill="none" stroke="#059669" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
-          {/* Sold dots */}
-          {data.map((d, i) => d.sold > 0 ? (
-            <circle key={i} cx={(i/(data.length-1))*100} cy={toY(d.sold)} r="3" fill="#059669" vectorEffect="non-scaling-stroke" />
-          ) : null)}
-          {/* Contract dots */}
-          {data.map((d, i) => d.contract > 0 ? (
-            <circle key={i} cx={(i/(data.length-1))*100} cy={toY(d.contract)} r="3" fill="#D97706" stroke="var(--surface)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-          ) : null)}
-          {/* Hover targets */}
+
+          {/* X-axis labels */}
           {data.map((d, i) => (
-            <rect key={i} x={(i/(data.length-1))*100 - W_STEP/2} y={0} width={W_STEP} height={H}
-              fill="transparent" style={{ cursor: 'crosshair' }}
-              onMouseEnter={e => {
-                const rect = e.currentTarget.closest('svg')!.getBoundingClientRect()
-                setTooltip({ x: (i/(data.length-1))*100, y: Math.min(toY(d.sold), toY(d.contract)), d })
-              }}
-              onMouseLeave={() => setTooltip(null)}
-            />
+            <text key={i} x={xOf(i)} y={PAD_T + CH + PAD_B - 6} textAnchor="middle"
+              fontSize="9" fill="var(--gray)" fontFamily="inherit" letterSpacing="0.04em">
+              {i % 2 === 0 ? d.label.toUpperCase() : ''}
+            </text>
           ))}
+
+          {/* Invisible hover strips */}
+          {data.map((d, i) => {
+            const stripW = CW / data.length
+            return (
+              <rect key={i}
+                x={xOf(i) - stripW / 2} y={PAD_T} width={stripW} height={CH}
+                fill="transparent" style={{ cursor: 'default' }}
+                onMouseEnter={() => setTooltip({ i, d })}
+              />
+            )
+          })}
+
+          {/* Hover vertical line */}
+          {tooltip && (
+            <line
+              x1={xOf(tooltip.i)} y1={PAD_T} x2={xOf(tooltip.i)} y2={PAD_T + CH}
+              stroke="var(--border)" strokeWidth="1" strokeDasharray="3 2"
+            />
+          )}
         </svg>
 
         {/* Tooltip */}
-        {tooltip && (tooltip.d.sold > 0 || tooltip.d.contract > 0) && (
-          <div style={{ position: 'absolute', left: `calc(40px + ${tooltip.x}%)`, top: 0, transform: 'translateX(-50%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', fontSize: 12, pointerEvents: 'none', zIndex: 10, whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-            <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{tooltip.d.label}</div>
-            {tooltip.d.sold > 0 && <div style={{ color: '#059669' }}>Closed: {fmt2(tooltip.d.sold)} ({tooltip.d.soldCount} unit{tooltip.d.soldCount !== 1 ? 's' : ''})</div>}
-            {tooltip.d.contract > 0 && <div style={{ color: '#D97706' }}>Under contract: {fmt2(tooltip.d.contract)} ({tooltip.d.contractCount} unit{tooltip.d.contractCount !== 1 ? 's' : ''})</div>}
-          </div>
-        )}
-
-        {/* X axis labels */}
-        <div style={{ position: 'absolute', left: 40, right: 0, top: H + 6, display: 'flex', justifyContent: 'space-between' }}>
-          {data.map((d, i) => (
-            <div key={i} style={{ fontSize: 10, color: 'var(--gray)', textAlign: 'center', flex: 1 }}>{i % 2 === 0 ? d.label : ''}</div>
-          ))}
-        </div>
+        {tooltip && (tooltip.d.sold > 0 || tooltip.d.contract > 0) && (() => {
+          const leftPct = (xOf(tooltip.i) / SVG_W) * 100
+          const alignRight = tooltip.i > data.length * 0.65
+          return (
+            <div style={{
+              position: 'absolute',
+              top: 8,
+              left: alignRight ? undefined : `calc(${leftPct}% + 10px)`,
+              right: alignRight ? `calc(${100 - leftPct}% + 10px)` : undefined,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: '10px 14px',
+              fontSize: 12,
+              pointerEvents: 'none',
+              zIndex: 10,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+              minWidth: 148,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 11, color: 'var(--gray)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>{tooltip.d.label}</div>
+              {tooltip.d.sold > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#059669', fontWeight: 600, marginBottom: 4 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#059669', flexShrink: 0 }} />
+                  <span>{fmt2(tooltip.d.sold)}</span>
+                  <span style={{ fontWeight: 400, color: 'var(--gray)', fontSize: 11 }}>· {tooltip.d.soldCount} closed</span>
+                </div>
+              )}
+              {tooltip.d.contract > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#D97706', fontWeight: 600 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D97706', flexShrink: 0 }} />
+                  <span>{fmt2(tooltip.d.contract)}</span>
+                  <span style={{ fontWeight: 400, color: 'var(--gray)', fontSize: 11 }}>· {tooltip.d.contractCount} contracts</span>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {maxVal <= 1 && (
