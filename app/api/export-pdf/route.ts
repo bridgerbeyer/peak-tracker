@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
 export async function POST(req: NextRequest) {
   const { entries, filterTrade, filterPhase, generatedBy } = await req.json()
 
@@ -69,14 +78,14 @@ export async function POST(req: NextRequest) {
     </div>
     <div class="header-right">
       <div class="date">${date}</div>
-      ${generatedBy ? `<div style="margin-top:4px">Prepared by ${generatedBy}</div>` : ''}
+      ${generatedBy ? `<div style="margin-top:4px">Prepared by ${esc(generatedBy)}</div>` : ''}
     </div>
   </div>
 
   <div class="meta-row">
     <div class="meta-chip">Total improvements: <span>${filtered.length}</span></div>
-    ${filterTrade ? `<div class="meta-chip">Trade: <span>${filterTrade}</span></div>` : ''}
-    ${filterPhase ? `<div class="meta-chip">Phase: <span>${filterPhase}</span></div>` : ''}
+    ${filterTrade ? `<div class="meta-chip">Trade: <span>${esc(filterTrade)}</span></div>` : ''}
+    ${filterPhase ? `<div class="meta-chip">Phase: <span>${esc(filterPhase)}</span></div>` : ''}
     <div class="meta-chip">Trades: <span>${Object.keys(groups).length}</span></div>
   </div>
 
@@ -84,7 +93,7 @@ export async function POST(req: NextRequest) {
   <div class="trade-section">
     <div class="trade-header">
       <div class="trade-dot" style="background: ${TRADE_COLORS[trade] || '#6B7280'}"></div>
-      <div class="trade-title">${trade}</div>
+      <div class="trade-title">${esc(trade)}</div>
       <div class="trade-count">${items.length} item${items.length !== 1 ? 's' : ''}</div>
     </div>
     ${(items as any[]).map(entry => `
@@ -94,17 +103,17 @@ export async function POST(req: NextRequest) {
         ${entry.photos.map((p: string) => `<img src="${p}" style="max-height: ${entry.photos.length === 1 ? '280px' : '180px'}" />`).join('')}
       </div>` : ''}
       <div class="entry-body">
-        ${entry.unit ? `<div class="entry-title">${entry.unit}</div>` : ''}
+        ${entry.unit ? `<div class="entry-title">${esc(entry.unit)}</div>` : ''}
         <div class="entry-meta">
-          <span class="phase-badge">${entry.area}</span>
+          <span class="phase-badge">${esc(entry.area)}</span>
           <span class="entry-date">${new Date(entry.created_at).toLocaleDateString()}</span>
-          ${entry.logged_by ? `<span class="entry-author">· ${entry.logged_by}</span>` : ''}
+          ${entry.logged_by ? `<span class="entry-author">· ${esc(entry.logged_by)}</span>` : ''}
         </div>
-        <div class="entry-desc">${entry.description}</div>
+        <div class="entry-desc">${esc(entry.description)}</div>
         ${entry.ai_insight ? `
         <div class="ai-note">
           <div class="ai-label">AI Spec Note</div>
-          <div class="ai-text">${entry.ai_insight}</div>
+          <div class="ai-text">${esc(entry.ai_insight)}</div>
         </div>` : ''}
       </div>
     </div>`).join('')}

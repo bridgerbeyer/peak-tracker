@@ -13,21 +13,28 @@ Issue:
 
 Respond with ONLY the recommendation. No preamble, no labels.`
 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 200,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-
-  const data = await resp.json()
-  const text = data.content?.find((b: { type: string }) => b.type === 'text')?.text || ''
-  return NextResponse.json({ insight: text })
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    clearTimeout(timeout)
+    const data = await resp.json()
+    const text = data.content?.find((b: { type: string }) => b.type === 'text')?.text || ''
+    return NextResponse.json({ insight: text })
+  } catch {
+    return NextResponse.json({ insight: '' }, { status: 500 })
+  }
 }

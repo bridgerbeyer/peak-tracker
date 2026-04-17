@@ -57,12 +57,15 @@ def write_cell(ws, row, col, value, bold=False, color=DARK, align="left", number
         c.fill = fill(bg)
     return c
 
-# ── Sample data (will be replaced by real data in route) ────────────────────
-sample_rows = [
-    {"unit":"A02","phase":"Phase 1","status":"Under Contract","buyer":"Frank","closeDate":"","price":339900,"commissionPct":0,"commission":0,"costs":5000,"addOnCOs":8000,"includedCOs":0,"finalPrice":347900,"net":342900,"costBreakdown":"Flooring: $5,000","coBreakdown":"Upgraded panel: $8,000 (Add-on)"},
-    {"unit":"A03","phase":"Phase 1","status":"Available","buyer":"","closeDate":"","price":0,"commissionPct":0,"commission":0,"costs":0,"addOnCOs":0,"includedCOs":0,"finalPrice":0,"net":0,"costBreakdown":"","coBreakdown":""},
-    {"unit":"B01","phase":"Phase 1","status":"Sold","buyer":"Scott","closeDate":"2026-03-15","price":299900,"commissionPct":3,"commission":8997,"costs":2500,"addOnCOs":0,"includedCOs":5000,"finalPrice":299900,"net":288403,"costBreakdown":"Paint: $2,500","coBreakdown":"Epoxy floor: $5,000 (Included)"},
-]
+# ── Load real data from route ────────────────────────────────────────────────
+if len(sys.argv) < 3:
+    print("Usage: build_excel.py <input.json> <output.xlsx>", file=sys.stderr)
+    sys.exit(1)
+
+with open(sys.argv[1], encoding="utf-8") as f:
+    rows = json.load(f)
+
+out_path = sys.argv[2]
 
 wb = Workbook()
 
@@ -108,7 +111,7 @@ status_bg = {"Sold": "D1FAE5", "Under Contract": "FEF3C7", "Available": "F3F4F6"
 status_fc = {"Sold": "065F46",  "Under Contract": "92400E", "Available": "374151"}
 
 # Data rows
-for r, row in enumerate(sample_rows, 4):
+for r, row in enumerate(rows, 4):
     bg = status_bg.get(row["status"], "FFFFFF")
     fc = status_fc.get(row["status"], DARK)
     stripe = "FAFAFA" if r % 2 == 0 else WHITE
@@ -131,7 +134,7 @@ for r, row in enumerate(sample_rows, 4):
     write_cell(ws1, r, 14, notes or "—", color="666666")
 
 # Summary section
-last_data_row = 3 + len(sample_rows)
+last_data_row = 3 + len(rows)
 summary_row = last_data_row + 2
 
 ws1.merge_cells(f"A{summary_row}:E{summary_row}")
@@ -182,10 +185,10 @@ t2.fill = fill(RED)
 t2.alignment = Alignment(horizontal="left", vertical="center", indent=1)
 ws2.row_dimensions[1].height = 36
 
-phases = sorted(set(r["phase"] for r in sample_rows))
+phases = sorted(set(r["phase"] for r in rows))
 start_row = 3
 for phase in phases:
-    phase_rows = [r for r in sample_rows if r["phase"] == phase]
+    phase_rows = [r for r in rows if r["phase"] == phase]
     # Phase header
     ws2.merge_cells(f"A{start_row}:F{start_row}")
     ph = ws2.cell(row=start_row, column=1, value=phase.upper())
@@ -239,33 +242,31 @@ for i, w in enumerate(widths, 1):
     ws3.column_dimensions[get_column_letter(i)].width = w
 
 r = 4
-for row in sample_rows:
-    if row["costBreakdown"] or row["coBreakdown"]:
-        items = []
-        for item in row["costBreakdown"].split(" | "):
-            if item:
-                parts = item.split(": $")
-                items.append({"label": parts[0], "amount": float(parts[1].replace(",","")) if len(parts)>1 else 0, "type": "Cost", "included": "N/A"})
-        for item in row["coBreakdown"].split(" | "):
-            if item:
-                label = item.split(": $")[0]
-                rest = item.split(": $")[1] if ": $" in item else ""
-                amt_str = rest.split(" (")[0].replace(",","") if " (" in rest else "0"
-                included = "Yes" if "Included" in item else "No"
-                items.append({"label": label, "amount": float(amt_str) if amt_str else 0, "type": "Change Order", "included": included})
+for row in rows:
+    bg = status_bg.get(row["status"], "FFFFFF")
+    fc = status_fc.get(row["status"], DARK)
 
-        for item in items:
-            write_cell(ws3, r, 1, row["unit"], bold=True)
-            write_cell(ws3, r, 2, row["phase"])
-            bg = status_bg.get(row["status"], "FFFFFF")
-            fc = status_fc.get(row["status"], DARK)
-            write_cell(ws3, r, 3, row["status"], color=fc, bg=bg, align="center")
-            write_cell(ws3, r, 4, item["label"])
-            write_cell(ws3, r, 5, item["amount"], number_format=currency_fmt(), align="right", color="CC2222")
-            write_cell(ws3, r, 6, item["type"])
-            write_cell(ws3, r, 7, item["included"], align="center",
-                       color=GREEN if item["included"]=="Yes" else ("CC2222" if item["included"]=="No" else DARK))
-            r += 1
+    for item in row.get("costItems", []):
+        write_cell(ws3, r, 1, row["unit"], bold=True)
+        write_cell(ws3, r, 2, row["phase"])
+        write_cell(ws3, r, 3, row["status"], color=fc, bg=bg, align="center")
+        write_cell(ws3, r, 4, item["label"])
+        write_cell(ws3, r, 5, item["amount"], number_format=currency_fmt(), align="right", color="CC2222")
+        write_cell(ws3, r, 6, "Cost")
+        write_cell(ws3, r, 7, "N/A", align="center", color=DARK)
+        r += 1
 
-wb.save("/home/claude/peak-tracker/SampleExport.xlsx")
+    for item in row.get("coItems", []):
+        included = "Yes" if item.get("included") else "No"
+        write_cell(ws3, r, 1, row["unit"], bold=True)
+        write_cell(ws3, r, 2, row["phase"])
+        write_cell(ws3, r, 3, row["status"], color=fc, bg=bg, align="center")
+        write_cell(ws3, r, 4, item["label"])
+        write_cell(ws3, r, 5, item["amount"], number_format=currency_fmt(), align="right", color="CC2222")
+        write_cell(ws3, r, 6, "Change Order")
+        write_cell(ws3, r, 7, included, align="center",
+                   color=GREEN if included == "Yes" else "CC2222")
+        r += 1
+
+wb.save(out_path)
 print("Excel built successfully")
