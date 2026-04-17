@@ -262,27 +262,33 @@ export default function Home() {
   }, [])
 
   async function fetchAll() {
-    const [e, p, u, t, ti, up, uc, co] = await Promise.all([
-      supabase.from('issues').select('*').order('created_at', { ascending: false }),
+    // Exclude image tables (task_images, unit_photos) — loaded lazily when a unit is opened
+    const [e, p, u, t, uc, co] = await Promise.all([
+      supabase.from('issues').select('id,created_at,category,area,unit,description,ai_insight,logged_by').order('created_at', { ascending: false }),
       supabase.from('plans').select('*').order('created_at', { ascending: false }),
       supabase.from('units').select('*').order('name'),
-      supabase.from('tasks').select('*').order('created_at'),
-      supabase.from('task_images').select('*').order('created_at'),
-      supabase.from('unit_photos').select('*').order('created_at', { ascending: false }),
+      supabase.from('tasks').select('id,unit_id,title,description,completed,due_date').order('created_at'),
       supabase.from('unit_costs').select('*').order('created_at'),
       supabase.from('change_orders').select('*').order('date', { ascending: false }),
     ])
-    const errs = [e.error, u.error, t.error, ti.error, up.error, uc.error, co.error].filter(Boolean)
+    const errs = [e.error, p.error, u.error, t.error, uc.error, co.error].filter(Boolean)
     if (errs.length) alert(`Failed to load some data: ${errs[0]?.message}. Please refresh.`)
     if (e.data) setEntries(e.data as Entry[])
     if (p.data) setPlans(p.data as Plan[])
     if (u.data) setUnits(u.data as Unit[])
     if (t.data) setTasks(t.data as Task[])
-    if (ti.data) setTaskImages(ti.data as TaskImage[])
-    if (up.data) setUnitPhotos(up.data as UnitPhoto[])
     if (uc.data) setUnitCosts(uc.data as UnitCost[])
     if (co.data) setChangeOrders(co.data as ChangeOrder[])
     setLoading(false)
+  }
+
+  async function fetchUnitImages(unitId: number) {
+    const [ti, up] = await Promise.all([
+      supabase.from('task_images').select('*').in('task_id', tasks.filter(t => t.unit_id === unitId).map(t => t.id)),
+      supabase.from('unit_photos').select('*').eq('unit_id', unitId).order('created_at', { ascending: false }),
+    ])
+    if (ti.data) setTaskImages(prev => [...prev.filter(i => !ti.data!.find(n => n.id === i.id)), ...ti.data as TaskImage[]])
+    if (up.data) setUnitPhotos(prev => [...prev.filter(p => p.unit_id !== unitId), ...up.data as UnitPhoto[]])
   }
 
   function handleSetName() {
@@ -403,6 +409,7 @@ export default function Home() {
     setEditCommission(unit.realtor_commission !== undefined && unit.realtor_commission !== null ? unit.realtor_commission.toString() : '0')
     setEditBuyer(unit.buyer_name || '')
     setEditCloseDate(unit.close_date || '')
+    fetchUnitImages(unit.id)
   }
 
   async function addUnit() {
